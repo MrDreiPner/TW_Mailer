@@ -8,6 +8,7 @@
 #include <string.h>
 #include <signal.h>
 #include <iostream>
+#include <sstream>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -158,6 +159,29 @@ int main(void)
    return EXIT_SUCCESS;
 }
 
+bool receiveMsgErrHandling(int size){
+    if (size == -1)
+      {
+         if (abortRequested)
+         {
+            perror("recv error after aborted");
+            return true;
+         }
+         else
+         {
+            perror("recv error");
+            return true;
+         }
+      }
+
+      if (size == 0)
+      {
+         printf("Client closed remote socket\n"); // ignore error
+         return true;
+      }
+      return false;
+}
+
 void *clientCommunication(void *data)
 {
    char buffer[BUF];
@@ -177,23 +201,8 @@ void *clientCommunication(void *data)
       /////////////////////////////////////////////////////////////////////////
       // RECEIVE
       size = recv(*current_socket, buffer, BUF - 1, 0);
-      if (size == -1)
-      {
-         if (abortRequested)
-         {
-            perror("recv error after aborted");
-         }
-         else
-         {
-            perror("recv error");
-         }
-         break;
-      }
-
-      if (size == 0)
-      {
-         printf("Client closed remote socket\n"); // ignore error
-         break;
+      if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
+        break;
       }
 
       // remove ugly debug message, because of the sent newline of client
@@ -207,17 +216,43 @@ void *clientCommunication(void *data)
       }
 
       buffer[size] = '\0';
-      printf("Message received: %s\n", buffer); 
-      
-      if(strcmp(buffer, "send") != 0){
+    printf("Message received: %s\n", buffer); 
+
+    if(strcmp(buffer, "send") == 0){
         printf("Waiting for sender username\n");
-        strcpy(buffer, "Please enter sender: \r\n");
-        if (send(*current_socket, buffer, strlen(buffer), 0) == -1)
-        {
-            perror("send failed");
-            return NULL;
-        }
+        bool messageIncomplete = true;
+        do{
+            if (send(*current_socket, "", 1, 0) == -1)
+            {
+                perror("send answer failed");
+                return NULL;
+            }
+            size = recv(*current_socket, buffer, BUF - 1, 0);
+            if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
+                break;
+            }
+            // remove ugly debug message, because of the sent newline of client
+            if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+            {
+                size -= 2;
+            }
+            else if (buffer[size - 1] == '\n')
+            {
+                --size;
+            }
+            buffer[size] = '\0';
+            printf("Message received: %s\n", buffer); 
+        }while(messageIncomplete);
+        // strcpy(buffer, "Please enter sender: \r\n");
+        // if (send(*current_socket, buffer, strlen(buffer), 0) == -1)
+        // {
+        //     perror("send failed");
+        //     return NULL;
+        // }
       }
+      
+      
+
     //ignore error
 
       if (send(*current_socket, "OK", 3, 0) == -1)

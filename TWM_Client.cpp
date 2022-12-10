@@ -111,20 +111,28 @@ int main(int argc, char **argv)
          // https://man7.org/linux/man-pages/man2/send.2.html
          // send will fail if connection is closed, but does not set
          // the error of send, but still the count of bytes sent
-         if ((send(create_socket, buffer, size, 0)) == -1) 
+         if(strcmp(buffer, "SEND") == 0)
          {
-            // in case the server is gone offline we will still not enter
-            // this part of code: see docs: https://linux.die.net/man/3/send
-            // >> Successful completion of a call to send() does not guarantee 
-            // >> delivery of the message. A return value of -1 indicates only 
-            // >> locally-detected errors.
-            // ... but
-            // to check the connection before send is sense-less because
-            // after checking the communication can fail (so we would need
-            // to have 1 atomic operation to check...)
-            perror("send error");
-            break;
+            std::string andrew;
+            
+            std::getline(std::cin, andrew,".");
+            char* yeezus = "SEND\n" + andrew;
+            send(create_socket, yeezus, size, 0);
          }
+        //  if ((send(create_socket, buffer, size, 0)) == -1) 
+        //  {
+        //     // in case the server is gone offline we will still not enter
+        //     // this part of code: see docs: https://linux.die.net/man/3/send
+        //     // >> Successful completion of a call to send() does not guarantee 
+        //     // >> delivery of the message. A return value of -1 indicates only 
+        //     // >> locally-detected errors.
+        //     // ... but
+        //     // to check the connection before send is sense-less because
+        //     // after checking the communication can fail (so we would need
+        //     // to have 1 atomic operation to check...)
+        //     perror("send error");
+        //     break;
+        //  }
 
          //////////////////////////////////////////////////////////////////////
          // RECEIVE FEEDBACK
@@ -151,13 +159,16 @@ int main(int argc, char **argv)
          }
          else
          {
-            buffer[size] = '\0';
-            printf("<< %s\n", buffer); // ignore error
-            if (strcmp("OK", buffer) != 0)
-            {
-               fprintf(stderr, "<< Server error occured, abort\n");
-               break;
+            if (strcmp("OK", buffer) == 0){
+                buffer[size] = '\0';
+                printf("<< %s\n", buffer);
             }
+     // ignore error
+            // if (strcmp("OK", buffer) != 0)
+            // {
+            //    fprintf(stderr, "<< Server error occured, abort\n");
+            //    break;
+            // }
          }
       }
    } while (!isQuit);
