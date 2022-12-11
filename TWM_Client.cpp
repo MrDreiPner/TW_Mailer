@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <iostream>
+#include <regex>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -14,6 +15,46 @@
 #define PORT 6543
 
 ///////////////////////////////////////////////////////////////////////////////
+
+//function to verify inputs
+bool verify(char* input, std::string version){
+   int size = strlen(input);
+   input[size-1] = '\0';
+   std::string check = input;
+   const std::regex patternNum("[0-9]+");
+   const std::regex patternUser("[a-z0-9]{1,8}");
+   if(version == "user"){
+      if(regex_match(check, patternUser))
+         return true;
+      std::cout << ">> Username not valid" << std::endl;
+   }
+   else{
+      if(regex_match(check, patternNum))
+         return true;
+      std::cout << ">> Invalid input" << std::endl;
+   }
+   return false;
+}
+
+//send verified Username to Server
+void sendUser(int create_socket, char* buffer, int size){
+   fgets(buffer, BUF, stdin);
+   while(!verify(buffer, "user")){
+      printf(">> ");
+      fgets(buffer, BUF, stdin);
+      }   
+   send(create_socket, buffer, size, 0);
+}
+
+//send verified Number to Server
+void sendNum(int create_socket, char* buffer, int size){
+   fgets(buffer, BUF, stdin);
+   while(!verify(buffer, "num")){
+      printf(">> ");
+      fgets(buffer, BUF, stdin);
+   }   
+   send(create_socket, buffer, size, 0); 
+}
 
 int main(int argc, char **argv)
 {
@@ -89,7 +130,6 @@ int main(int argc, char **argv)
    do
    {
       printf(">> ");
-    //   std::cin >> buffer;
       if (fgets(buffer, BUF, stdin) != NULL)
       {
          int size = strlen(buffer);
@@ -104,22 +144,45 @@ int main(int argc, char **argv)
             --size;
             buffer[size] = 0;
          }
-         isQuit = strcmp(buffer, "quit") == 0;
+         isQuit = strcmp(buffer, "QUIT") == 0;
 
          //////////////////////////////////////////////////////////////////////
          // SEND DATA
          // https://man7.org/linux/man-pages/man2/send.2.html
          // send will fail if connection is closed, but does not set
          // the error of send, but still the count of bytes sent
-         if(strcmp(buffer, "SEND") == 0)
-         {
+         if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
+            int enterPress = 1;
             while(buffer[0] != '.'){
                printf(">> ");
                fgets(buffer, BUF, stdin);
+               if(enterPress <= 2){
+                  while(!verify(buffer, "user")){
+                     printf(">> ");
+                     fgets(buffer, BUF, stdin);
+                  }    
+               }
+               if(enterPress == 3){
+                  while(strlen(buffer) > 80){
+                     std::cout << "Subject line too long. Max 80 characters allowed" << std::endl;
+                     printf(">> ");
+                     fgets(buffer, BUF, stdin); 
+                  }
+               }
                size = strlen(buffer);
                send(create_socket, buffer, size, 0);
+               enterPress++;
             }
+         }
+         else if(strcmp(buffer, "LIST") == 0){
+            send(create_socket, buffer, size, 0);
+            sendUser(create_socket, buffer, size);
+         }
+         else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
+            send(create_socket, buffer, size, 0);
+            sendUser(create_socket, buffer, size); 
+            sendNum(create_socket, buffer, size);
          }
          if ((send(create_socket, buffer, size, 0)) == -1) 
          {
@@ -194,3 +257,4 @@ int main(int argc, char **argv)
 
    return EXIT_SUCCESS;
 }
+
