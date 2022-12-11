@@ -10,6 +10,8 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <charconv>
+#include <array>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -183,6 +185,14 @@ bool receiveMsgErrHandling(int size){
       return false;
 }
 
+// used to flush the buffer to prevent faulty access
+void cleanBuffer (char* buffer){
+   int buffSize = strlen(buffer);
+   for(int i = 0; i<buffSize; i++){
+      buffer[i] = '\0';
+   }
+}
+
 void *clientCommunication(void *data)
 {
    char buffer[BUF];
@@ -197,6 +207,7 @@ void *clientCommunication(void *data)
       perror("send failed");
       return NULL;
    }
+   cleanBuffer(buffer);
    do
    {
       /////////////////////////////////////////////////////////////////////////
@@ -205,7 +216,6 @@ void *clientCommunication(void *data)
       if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
         break;
       }
-
       // remove ugly debug message, because of the sent newline of client
       if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
       {
@@ -220,10 +230,12 @@ void *clientCommunication(void *data)
     printf("Message received: %s\n", buffer); 
 
     if(strcmp(buffer, "SEND") == 0){
-        printf("Waiting for sender username\n");
-        bool messageIncomplete = true;
-        while(messageIncomplete){
+         int state = 0;
+         bool messageIncomplete = true;
+         printf("Waiting for data\n");
+         while(messageIncomplete){
             size = recv(*current_socket, buffer, BUF - 1, 0);
+            /////////////////////////////////////
             if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
                 break;
             }
@@ -236,16 +248,29 @@ void *clientCommunication(void *data)
             {
                 --size;
             }
+            //////////////////////////////////////
+            switch(state){
+               case 0:  std::ofstream file;
+                     const char* txt =".txt";
+                     char* filename{ new char[strlen(buffer) + strlen(txt) + 1] };
+                     filename = strcpy(filename, buffer);
+                     filename = strcat(filename, txt);
+                     file.open(filename, std::ios_base::app);
+                     file << "Sender: " << buffer;
+                     cleanBuffer(buffer);
+                     file.close();
+                     // state++;
+               break;
+            }
+
             if(buffer[0] == '.'){
                printf("SEND message completed\n");
                messageIncomplete = false;
             }
             buffer[size] = '\0';
             printf("Message received deep: %s\n", buffer); 
-        }
+         }
       }
-      
-      
 
     //ignore error
 
