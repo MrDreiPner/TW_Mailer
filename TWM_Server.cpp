@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -218,15 +219,10 @@ void *clientCommunication(void *data)
       buffer[size] = '\0';
     printf("Message received: %s\n", buffer); 
 
-    if(strcmp(buffer, "send") == 0){
+    if(strcmp(buffer, "SEND") == 0){
         printf("Waiting for sender username\n");
         bool messageIncomplete = true;
-        do{
-            if (send(*current_socket, "", 1, 0) == -1)
-            {
-                perror("send answer failed");
-                return NULL;
-            }
+        while(messageIncomplete){
             size = recv(*current_socket, buffer, BUF - 1, 0);
             if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
                 break;
@@ -240,15 +236,13 @@ void *clientCommunication(void *data)
             {
                 --size;
             }
+            if(buffer[0] == '.'){
+               printf("SEND message completed\n");
+               messageIncomplete = false;
+            }
             buffer[size] = '\0';
-            printf("Message received: %s\n", buffer); 
-        }while(messageIncomplete);
-        // strcpy(buffer, "Please enter sender: \r\n");
-        // if (send(*current_socket, buffer, strlen(buffer), 0) == -1)
-        // {
-        //     perror("send failed");
-        //     return NULL;
-        // }
+            printf("Message received deep: %s\n", buffer); 
+        }
       }
       
       
