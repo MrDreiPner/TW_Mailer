@@ -269,9 +269,9 @@ void *clientCommunication(void *data)
                break;
                default:
                   if(message[0] == '\0')
-                  strcpy(message, buffer);
+                     strcpy(message, buffer);
                   else
-                  strcat(message, buffer);
+                     strcat(message, buffer);
                   state++;
                break;
             }
@@ -316,13 +316,13 @@ void *clientCommunication(void *data)
          }
       }
       if(strcmp(buffer, "LIST") == 0){
+         cleanBuffer(buffer);
          std::ifstream file;
          std::string line;
          std::string allSubjects;
          std::string subjectStr = "Subject";
          int msgCount = 0;
          std::string msgCounterString;
-         cleanBuffer(buffer);
          bool waiting = true;
          printf("Waiting for data\n");
          while(waiting){
@@ -342,11 +342,14 @@ void *clientCommunication(void *data)
             }
             printf("Message received in LIST command: %s\n", buffer); 
             const char* type = "REC_";
+            char username[8];
+            strcpy(username, buffer);
             const char* txt =".txt";
-            char* filename{ new char[strlen(type)+ strlen(buffer) + strlen(txt) + 1] };
+            char* filename{ new char[strlen(type)+ strlen(username) + strlen(txt) + 1] };
             filename = strcpy(filename, type);
             filename = strcat(filename, buffer);
             filename = strcat(filename, txt);
+            cleanBuffer(buffer);
             printf("Composed filename: %s\n", filename); 
             file.open(filename);
             if(file.is_open()){
@@ -385,7 +388,6 @@ void *clientCommunication(void *data)
                }
                waiting = false;
             }
-            cleanBuffer(buffer);
          }
          
       }

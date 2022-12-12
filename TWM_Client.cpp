@@ -154,6 +154,7 @@ int main(int argc, char **argv)
          if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
             int enterPress = 1;
+            bool delimiterSent = false;
             while(buffer[0] != '.'){
                if(enterPress < 2)
                printf("Sender >> ");
@@ -180,10 +181,14 @@ int main(int argc, char **argv)
                }
                if(enterPress > 3){
                   printf("Message >> ");
-                  fgets(buffer, BUF, stdin); 
+                  fgets(buffer, BUF, stdin);
                }
-               size = strlen(buffer);
-               send(create_socket, buffer, size, 0);
+               if(!delimiterSent){
+                  size = strlen(buffer);
+                  send(create_socket, buffer, size, 0);   
+               }
+               if(buffer[0] == '.') 
+                  delimiterSent = true;
                enterPress++;
             }
          }
