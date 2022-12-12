@@ -227,31 +227,31 @@ void *clientCommunication(void *data)
       }
 
       buffer[size] = '\0';
-    printf("Message received: %s\n", buffer); 
+      printf("Message received: %s\n", buffer); 
 
-    if(strcmp(buffer, "SEND") == 0){
+      if(strcmp(buffer, "SEND") == 0){
          int state = 0;
          bool messageIncomplete = true;
          std::string UIDstr = "UID";
-         char sender[8];
-         char receiver[8];
-         char subject[80];
-         char message[BUF];
+         char sender[9];
+         char receiver[9];
+         char subject[81];
+         char message[BUF+1];
          printf("Waiting for data\n");
          while(messageIncomplete){
             size = recv(*current_socket, buffer, BUF - 1, 0);
             /////////////////////////////////////
             if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
-                break;
+               break;
             }
             // remove ugly debug message, because of the sent newline of client
             if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
             {
-                size -= 2;
+               size -= 2;
             }
             else if (buffer[size - 1] == '\n')
             {
-                --size;
+               --size;
             }
             //////////////////////////////////////
             switch(state){
@@ -306,7 +306,7 @@ void *clientCommunication(void *data)
                   std::cout << "Unable to open file " << filename << std::endl;
                }
                file.open(filename, std::ios_base::app);
-               file << "\nUID: " << UID << "\nSender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: " << message;
+               file << "UID: " << UID << "\nSender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: " << message << std::endl;
                file.close();
                messageIncomplete = false;
             }
@@ -316,7 +316,7 @@ void *clientCommunication(void *data)
          }
       }
       if(strcmp(buffer, "LIST") == 0){
-         cleanBuffer(buffer);
+         //cleanBuffer(buffer);
          std::ifstream file;
          std::string line;
          std::string allSubjects;
@@ -324,43 +324,41 @@ void *clientCommunication(void *data)
          int msgCount = 0;
          std::string msgCounterString;
          bool waiting = true;
+         char username[9];
          printf("Waiting for data\n");
          while(waiting){
             size = recv(*current_socket, buffer, BUF - 1, 0);
             /////////////////////////////////////
             if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
-                  break;
+                break;
             }
             // remove ugly debug message, because of the sent newline of client
             if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
             {
-                  size -= 2;
+                size -= 2;
             }
             else if (buffer[size - 1] == '\n')
             {
-                  --size;
+                --size;
             }
-            printf("Message received in LIST command: %s\n", buffer); 
-            const char* type = "REC_";
-            char username[8];
+            //////////////////////////////////////
             strcpy(username, buffer);
+            printf("Message received in LIST command: %s\n", username); 
+            const char* type = "REC_";
             const char* txt =".txt";
             char* filename{ new char[strlen(type)+ strlen(username) + strlen(txt) + 1] };
             filename = strcpy(filename, type);
-            filename = strcat(filename, buffer);
+            filename = strcat(filename, username);
             filename = strcat(filename, txt);
-            cleanBuffer(buffer);
             printf("Composed filename: %s\n", filename); 
             file.open(filename);
             if(file.is_open()){
-               if(file.peek() != EOF){
-                  while(getline (file, line)){
-                     if(line.substr(0,6) == subjectStr.substr(0,6)){
-                        line.erase(0,8);
-                        msgCounterString = std::to_string(msgCount);
-                        allSubjects = msgCounterString + ": " + line + "\n";
-                        msgCount++;
-                     }
+               while(getline (file, line)){
+                  if(line.substr(0,6) == subjectStr.substr(0,6)){
+                     line.erase(0,8);
+                     msgCounterString = std::to_string(msgCount);
+                     allSubjects = msgCounterString + ": " + line + "\n";
+                     msgCount++;
                   }
                }
             }
@@ -388,15 +386,15 @@ void *clientCommunication(void *data)
                }
                waiting = false;
             }
+            cleanBuffer(buffer);
          }
-         
       }
+
       if(strcmp(buffer, "READ") == 0){
          
       }
 
     //ignore error
-
       if (send(*current_socket, "OK", 3, 0) == -1)
       {
          perror("send answer failed");

@@ -1,9 +1,0 @@
-
-UID: 1
-Sender: marko
-Receiver: dora
-Subject: SubSub
-
-Message: big chungus
-.
-.
