@@ -233,6 +233,10 @@ void *clientCommunication(void *data)
          int state = 0;
          bool messageIncomplete = true;
          std::string UIDstr = "UID";
+         char sender[8];
+         char receiver[8];
+         char subject[80];
+         char message[BUF];
          printf("Waiting for data\n");
          while(messageIncomplete){
             size = recv(*current_socket, buffer, BUF - 1, 0);
@@ -252,47 +256,141 @@ void *clientCommunication(void *data)
             //////////////////////////////////////
             switch(state){
                case 0:  
-                     std::ofstream file;
-                     std::ifstream checkFile;
-                     std::string line;
-                     int UID = 1;
-                     const char* type = "SEND_";
-                     const char* txt =".txt";
-                     char* filename{ new char[strlen(type)+ strlen(buffer) + strlen(txt) + 1] };
-                     filename = strcpy(filename, type);
-                     filename = strcat(filename, buffer);
-                     filename = strcat(filename, txt);
-                     checkFile.open(filename);
-                     if(checkFile.is_open()){
-                        if(checkFile.peek() != EOF){
-                           while(getline (checkFile, line)){
-                              if(line.substr(0,2) != UIDstr.substr(0,2)){
-                              std::cout << line << std::endl;
-                              }
-                              if(line.substr(0,2) == UIDstr.substr(0,2)){
-                                 UID++;
-                              }
-                           }
-                        }
-                     }
-                     else if(UID != 1){
-                        std::cout << "Unable to open file " << filename << std::endl;
-                     }
-                     file.open(filename, std::ios_base::app);
-                     file << "UID: " << UID << "\nSender: " << buffer;
-                     file.close();
-                     // state++;
+                  strcpy(sender, buffer);
+                  state++;
+               break;
+               case 1:  
+                  strcpy(receiver, buffer);
+                  state++;
+               break;
+               case 2:  
+                  strcpy(subject, buffer);
+                  state++;
+               break;
+               default:
+                  if(message[0] == '\0')
+                  strcpy(message, buffer);
+                  else
+                  strcat(message, buffer);
+                  state++;
                break;
             }
 
             if(buffer[0] == '.'){
                printf("SEND message completed\n");
+               std::ofstream file;
+               std::ifstream checkFile;
+               std::string line;
+               int UID = 1;
+               const char* type = "REC_";
+               const char* txt =".txt";
+               char* filename{ new char[strlen(type)+ strlen(receiver) + strlen(txt) + 1] };
+               filename = strcpy(filename, type);
+               filename = strcat(filename, receiver);
+               filename = strcat(filename, txt);
+               printf("Composed filename: %s\n", filename); 
+               checkFile.open(filename);
+               if(checkFile.is_open()){
+                  if(checkFile.peek() != EOF){
+                     while(getline (checkFile, line)){
+                        if(line.substr(0,2) != UIDstr.substr(0,2)){
+                        std::cout << line << std::endl;
+                        }
+                        if(line.substr(0,2) == UIDstr.substr(0,2)){
+                           UID++;
+                        }
+                     }
+                  }
+               }
+               else if(UID != 1){
+                  std::cout << "Unable to open file " << filename << std::endl;
+               }
+               file.open(filename, std::ios_base::app);
+               file << "\nUID: " << UID << "\nSender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: " << message;
+               file.close();
                messageIncomplete = false;
             }
             buffer[size] = '\0';
             printf("Message received in SEND command: %s\n", buffer); 
             cleanBuffer(buffer);
          }
+      }
+      if(strcmp(buffer, "LIST") == 0){
+         std::ifstream file;
+         std::string line;
+         std::string allSubjects;
+         std::string subjectStr = "Subject";
+         int msgCount = 0;
+         std::string msgCounterString;
+         cleanBuffer(buffer);
+         bool waiting = true;
+         printf("Waiting for data\n");
+         while(waiting){
+            size = recv(*current_socket, buffer, BUF - 1, 0);
+            /////////////////////////////////////
+            if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
+                  break;
+            }
+            // remove ugly debug message, because of the sent newline of client
+            if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+            {
+                  size -= 2;
+            }
+            else if (buffer[size - 1] == '\n')
+            {
+                  --size;
+            }
+            printf("Message received in LIST command: %s\n", buffer); 
+            const char* type = "REC_";
+            const char* txt =".txt";
+            char* filename{ new char[strlen(type)+ strlen(buffer) + strlen(txt) + 1] };
+            filename = strcpy(filename, type);
+            filename = strcat(filename, buffer);
+            filename = strcat(filename, txt);
+            printf("Composed filename: %s\n", filename); 
+            file.open(filename);
+            if(file.is_open()){
+               if(file.peek() != EOF){
+                  while(getline (file, line)){
+                     if(line.substr(0,6) == subjectStr.substr(0,6)){
+                        line.erase(0,8);
+                        msgCounterString = std::to_string(msgCount);
+                        allSubjects = msgCounterString + ": " + line + "\n";
+                        msgCount++;
+                     }
+                  }
+               }
+            }
+            else{
+               std::cout << "Unable to open file " << filename << std::endl;
+            }
+            if(msgCount > 0){
+               msgCounterString = std::to_string(msgCount);
+               allSubjects = msgCounterString + ": " + line + "\n";
+               int size = allSubjects.size();
+               char package[size+1];
+               strcpy(package, allSubjects.c_str());
+               if (send(*current_socket, package, size, 0) == -1)
+               {
+                  perror("send answer failed");
+                  return NULL;
+               }
+               waiting = false;
+            }
+            else{
+               if (send(*current_socket, "0", 2, 0) == -1)
+               {
+                  perror("send answer failed");
+                  return NULL;
+               }
+               waiting = false;
+            }
+            cleanBuffer(buffer);
+         }
+         
+      }
+      if(strcmp(buffer, "READ") == 0){
+         
       }
 
     //ignore error

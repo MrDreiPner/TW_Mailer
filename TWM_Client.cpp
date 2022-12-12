@@ -155,20 +155,32 @@ int main(int argc, char **argv)
             send(create_socket, buffer, size, 0);
             int enterPress = 1;
             while(buffer[0] != '.'){
-               printf(">> ");
+               if(enterPress < 2)
+               printf("Sender >> ");
+               else if(enterPress <= 2)
+               printf("Receiver >> ");
                fgets(buffer, BUF, stdin);
                if(enterPress <= 2){
                   while(!verify(buffer, "user")){
-                     printf(">> ");
+                     if(enterPress < 2)
+                     printf("Sender >> ");
+                     else
+                     printf("Receiver >> ");
                      fgets(buffer, BUF, stdin);
                   }    
                }
                if(enterPress == 3){
+                  printf("Subject >> ");
+                  fgets(buffer, BUF, stdin); 
                   while(strlen(buffer) > 80){
                      std::cout << "Subject line too long. Max 80 characters allowed" << std::endl;
-                     printf(">> ");
+                     printf("Subject >> ");
                      fgets(buffer, BUF, stdin); 
                   }
+               }
+               if(enterPress > 3){
+                  printf("Message >> ");
+                  fgets(buffer, BUF, stdin); 
                }
                size = strlen(buffer);
                send(create_socket, buffer, size, 0);
@@ -177,7 +189,11 @@ int main(int argc, char **argv)
          }
          else if(strcmp(buffer, "LIST") == 0){
             send(create_socket, buffer, size, 0);
-            sendUser(create_socket, buffer, size);
+            printf("Username >> ");
+            fgets(buffer, BUF, stdin);
+            size = strlen(buffer);
+            send(create_socket, buffer, size, 0);
+            //sendUser(create_socket, buffer, size);
          }
          else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
             send(create_socket, buffer, size, 0);
@@ -225,10 +241,6 @@ int main(int argc, char **argv)
          }
          else
          {
-            // if (strcmp("OK", buffer) == 0){
-            //     buffer[size] = '\0';
-            //     printf("<< %s\n", buffer);
-            // }
      // ignore error
             if (strcmp("OK", buffer) != 0)
             {
