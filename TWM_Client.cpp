@@ -208,12 +208,6 @@ int main(int argc, char **argv)
                      break;
                   default:
                      std::cout << "Message >> ";
-                     // char msgBuffer[INT32_MAX];
-                     // fgets(msgBuffer, INT32_MAX, stdin);
-                     // //int packSize;
-                     // while(strlen(buffer) > BUF){
-
-                     // }
                      fgets(buffer, BUF, stdin);
                      size = strlen(buffer);
                      send(create_socket, buffer, size, 0);

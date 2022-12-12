@@ -272,12 +272,15 @@ void *clientCommunication(void *data)
                   strcpy(subject, buffer);
                   state++;
                break;
-               default:
-                  if(message[0] == '\0' && strcmp(message,".") != 0)
+               case 3:
+                  if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
                      strcpy(message, buffer);
-                  else if(strcmp(message,".") != 0)
+                  else if(!(buffer[0] == '.')){
+                     printf("if . i should not be here --> content is %s", buffer);
                      strcat(message, buffer);
-                  state++;
+                  }
+                  else
+                     state++;
                break;
             }
 
@@ -298,7 +301,7 @@ void *clientCommunication(void *data)
                filename = strcat(filename, txt);
                printf("Composed filename: %s\n", filename); 
                file.open(filename, std::ios_base::app);
-               file << "\nSender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "Message: " << message << std::endl;
+               file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "Message: \n" << message << std::endl;
                file.close();
                messageIncomplete = false;
             }
@@ -310,11 +313,10 @@ void *clientCommunication(void *data)
       if(strcmp(buffer, "LIST") == 0){
          cleanBuffer(buffer);
          std::ifstream file;
-         std::string line;
+         std::string line = "\0";
          std::string allSubjects = "\0";
-         std::string subjectStr = "Subject: ";
          int msgCount = 0;
-         std::string msgCounterString;
+         std::string msgCounterString = "\0";
          bool waiting = true;
          //char username[9];
          printf("Waiting for data\n");
@@ -346,10 +348,9 @@ void *clientCommunication(void *data)
                   std::string entryString = entry.path();
                   entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-5);
                   
-                  std::cout << msgCount << ": " << entryString << std::endl;
+                  std::cout << msgCount << ": " << entryString;
 
-                  allSubjects += msgCounterString + ":" + entryString + "\n";
-                  waiting = false;
+                  allSubjects += msgCounterString + ":" + entryString;
                }
                if(msgCount > 0){
                   msgCounterString = std::to_string(msgCount);
