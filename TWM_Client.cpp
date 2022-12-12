@@ -218,10 +218,10 @@ int main(int argc, char **argv)
          else if(strcmp(buffer, "LIST") == 0){
             send(create_socket, buffer, size, 0);
             printf("Username >> ");
-            fgets(buffer, BUF, stdin);
-            size = strlen(buffer);
-            send(create_socket, buffer, size, 0);
-            //sendUser(create_socket, buffer);
+            // fgets(buffer, BUF, stdin);
+            // size = strlen(buffer);
+            // send(create_socket, buffer, size, 0);
+            sendUser(create_socket, buffer);
          }
          else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
             send(create_socket, buffer, size, 0);
