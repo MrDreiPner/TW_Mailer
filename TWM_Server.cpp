@@ -192,7 +192,7 @@ bool receiveMsgErrHandling(int size){
 // used to flush the buffer to prevent faulty access
 void cleanBuffer (char* buffer){
    int buffSize = strlen(buffer);
-   for(int i = 0; i<buffSize; i++){
+   for(int i = 0; i<=buffSize; i++){
       buffer[i] = '\0';
    }
 }
@@ -322,18 +322,18 @@ void *clientCommunication(void *data)
          while(waiting){
             size = recv(*current_socket, buffer, BUF - 1, 0);
             /////////////////////////////////////
-            if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
-                break;
-            }
-            // remove ugly debug message, because of the sent newline of client
-            if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
-            {
-                size -= 2;
-            }
-            else if (buffer[size - 1] == '\n')
-            {
-                --size;
-            }
+            // if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
+            //     break;
+            // }
+            // // remove ugly debug message, because of the sent newline of client
+            // if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+            // {
+            //     size -= 2;
+            // }
+            // else if (buffer[size - 1] == '\n')
+            // {
+            //     --size;
+            // }
             //////////////////////////////////////
             printf("Message received in LIST command: %s\n", buffer); 
             char* directory{ new char[strlen(buffer) + 1 + 1] };
@@ -345,11 +345,11 @@ void *clientCommunication(void *data)
                   msgCount++;
                   msgCounterString = std::to_string(msgCount);
                   std::string entryString = entry.path();
-                  entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-5);
+                  entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
                   
-                  std::cout << msgCount << ": " << entryString;
+                  std::cout << msgCount << ": " << entryString + "\n";
 
-                  allSubjects += msgCounterString + ":" + entryString;
+                  allSubjects += msgCounterString + ":" + entryString + "\n";
                }
                if(msgCount > 0){
                   msgCounterString = std::to_string(msgCount);
@@ -571,7 +571,7 @@ void *clientCommunication(void *data)
          return NULL;
       }
    } while (strcmp(buffer, "quit") != 0 && !abortRequested);
-
+   cleanBuffer(buffer);
    // closes/frees the descriptor if not already
    if (*current_socket != -1)
    {

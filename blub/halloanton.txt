@@ -1,7 +1,0 @@
-Sender: anton
-Receiver: blub
-Subject: hallo
-antonMessage: 
-dis message
-gud
-
