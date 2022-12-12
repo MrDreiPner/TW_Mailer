@@ -37,23 +37,27 @@ bool verify(char* input, std::string version){
 }
 
 //send verified Username to Server
-void sendUser(int create_socket, char* buffer, int size){
+void sendUser(int create_socket, char* buffer){
    fgets(buffer, BUF, stdin);
    while(!verify(buffer, "user")){
       printf(">> ");
       fgets(buffer, BUF, stdin);
-      }   
+   }
+   int size = strlen(buffer);
+   buffer[size-1] = '\0';
    send(create_socket, buffer, size, 0);
 }
 
 //send verified Number to Server
-void sendNum(int create_socket, char* buffer, int size){
+void sendNum(int create_socket, char* buffer){
    fgets(buffer, BUF, stdin);
    while(!verify(buffer, "num")){
       printf(">> ");
       fgets(buffer, BUF, stdin);
-   }   
-   send(create_socket, buffer, size, 0); 
+   }
+   int size = strlen(buffer);
+   buffer[size-1] = '\0';
+   send(create_socket, buffer, size, 0);
 }
 
 int main(int argc, char **argv)
@@ -66,10 +70,6 @@ int main(int argc, char **argv)
 
    ////////////////////////////////////////////////////////////////////////////
    // CREATE A SOCKET
-   // https://man7.org/linux/man-pages/man2/socket.2.html
-   // https://man7.org/linux/man-pages/man7/ip.7.html
-   // https://man7.org/linux/man-pages/man7/tcp.7.html
-   // IPv4, TCP (connection oriented), IP (same as server)
    if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1)
    {
       perror("Socket error");
@@ -78,12 +78,9 @@ int main(int argc, char **argv)
 
    ////////////////////////////////////////////////////////////////////////////
    // INIT ADDRESS
-   // Attention: network byte order => big endian
    memset(&address, 0, sizeof(address)); // init storage with 0
    address.sin_family = AF_INET;         // IPv4
-   // https://man7.org/linux/man-pages/man3/htons.3.html
    address.sin_port = htons(PORT);
-   // https://man7.org/linux/man-pages/man3/inet_aton.3.html
    if (argc < 2)
    {
       inet_aton("127.0.0.1", &address.sin_addr);
@@ -95,12 +92,10 @@ int main(int argc, char **argv)
 
    ////////////////////////////////////////////////////////////////////////////
    // CREATE A CONNECTION
-   // https://man7.org/linux/man-pages/man2/connect.2.html
    if (connect(create_socket,
                (struct sockaddr *)&address,
                sizeof(address)) == -1)
    {
-      // https://man7.org/linux/man-pages/man3/perror.3.html
       perror("Connect error - no server available");
       return EXIT_FAILURE;
    }
@@ -111,7 +106,6 @@ int main(int argc, char **argv)
 
    ////////////////////////////////////////////////////////////////////////////
    // RECEIVE DATA
-   // https://man7.org/linux/man-pages/man2/recv.2.html
    size = recv(create_socket, buffer, BUF - 1, 0);
    if (size == -1)
    {
@@ -148,7 +142,6 @@ int main(int argc, char **argv)
 
          //////////////////////////////////////////////////////////////////////
          // SEND DATA
-         // https://man7.org/linux/man-pages/man2/send.2.html
          // send will fail if connection is closed, but does not set
          // the error of send, but still the count of bytes sent
          if(strcmp(buffer, "SEND") == 0){
@@ -156,7 +149,7 @@ int main(int argc, char **argv)
             int enterPress = 1;
             bool delimiterSent = false;
             while(buffer[0] != '.'){
-               if(enterPress < 2)
+               /*if(enterPress < 2)
                printf("Sender >> ");
                else if(enterPress <= 2)
                printf("Receiver >> ");
@@ -189,7 +182,37 @@ int main(int argc, char **argv)
                }
                if(buffer[0] == '.') 
                   delimiterSent = true;
-               enterPress++;
+               enterPress++;*/
+            }
+            switch(enterPress){
+               case 1: 
+                  std::cout << "Sender >> ";
+                  sendUser(create_socket, buffer);
+                  enterPress++;
+                  break;
+               case 2: 
+                  std::cout << "Receiver >> ";
+                  sendUser(create_socket, buffer);
+                  enterPress++;
+                  break; 
+               case 3: 
+                  std::cout << "Subject >> ";
+                  fgets(buffer, BUF, stdin); 
+                  while(strlen(buffer) > 80){
+                     std::cout << "Subject line too long. Max 80 characters allowed" << std::endl;
+                     printf("Subject >> ");
+                     fgets(buffer, BUF, stdin); 
+                  }
+                  size = strlen(buffer);
+                  send(create_socket, buffer, size, 0);
+                  enterPress++;
+                  break;
+               default:
+                  std::cout << "Message >> ";
+                  fgets(buffer, BUF, stdin);
+                  size = strlen(buffer);
+                  send(create_socket, buffer, size, 0);
+                  break;
             }
          }
          else if(strcmp(buffer, "LIST") == 0){
@@ -198,40 +221,21 @@ int main(int argc, char **argv)
             fgets(buffer, BUF, stdin);
             size = strlen(buffer);
             send(create_socket, buffer, size, 0);
-            //sendUser(create_socket, buffer, size);
+            //sendUser(create_socket, buffer);
          }
          else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
             send(create_socket, buffer, size, 0);
-            sendUser(create_socket, buffer, size); 
-            sendNum(create_socket, buffer, size);
+            sendUser(create_socket, buffer); 
+            sendNum(create_socket, buffer);
          }
          if ((send(create_socket, buffer, size, 0)) == -1) 
          {
-            // in case the server is gone offline we will still not enter
-            // this part of code: see docs: https://linux.die.net/man/3/send
-            // >> Successful completion of a call to send() does not guarantee 
-            // >> delivery of the message. A return value of -1 indicates only 
-            // >> locally-detected errors.
-            // ... but
-            // to check the connection before send is sense-less because
-            // after checking the communication can fail (so we would need
-            // to have 1 atomic operation to check...)
             perror("send error");
             break;
          }
 
          //////////////////////////////////////////////////////////////////////
          // RECEIVE FEEDBACK
-         // consider: reconnect handling might be appropriate in somes cases
-         //           How can we determine that the command sent was received 
-         //           or not? 
-         //           - Resend, might change state too often. 
-         //           - Else a command might have been lost.
-         //
-         // solution 1: adding meta-data (unique command id) and check on the
-         //             server if already processed.
-         // solution 2: add an infrastructure component for messaging (broker)
-         //
          size = recv(create_socket, buffer, BUF - 1, 0);
          std::cout << "<< " << buffer << std::endl;
          if (size == -1)
