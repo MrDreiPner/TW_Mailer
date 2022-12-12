@@ -222,12 +222,16 @@ int main(int argc, char **argv)
             size = strlen(buffer);
             buffer[size-1] = '\0';
             send(create_socket, buffer, size, 0);
-            //sendUser(create_socket, buffer);
          }
          else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
             send(create_socket, buffer, size, 0);
-            sendUser(create_socket, buffer); 
-            sendNum(create_socket, buffer);
+            for(int i = 0; i < 2; i++){
+               i == 0 ? printf("Username >> ") : printf("Number >> ");
+               fgets(buffer, BUF, stdin);
+               size = strlen(buffer);
+               buffer[size-1] = '\0';
+               send(create_socket, buffer, size, 0);
+            }
          }
          if ((send(create_socket, buffer, size, 0)) == -1) 
          {
@@ -252,11 +256,11 @@ int main(int argc, char **argv)
          else
          {
      // ignore error
-            if (strcmp("OK", buffer) != 0)
-            {
-               fprintf(stderr, "<< Server error occured, abort\n");
-               break;
-            }
+            // if (strcmp("OK", buffer) != 0)
+            // {
+            //    fprintf(stderr, "<< Server error occured, abort\n");
+            //    break;
+            // }
          }
       }
    } while (!isQuit);

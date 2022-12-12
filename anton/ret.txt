@@ -1,6 +1,0 @@
-
-Sender: maro
-Receiver: anton
-Subject: ret
-Message: ABcdefg..
-

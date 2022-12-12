@@ -362,6 +362,7 @@ void *clientCommunication(void *data)
                      perror("send answer failed");
                      return NULL;
                   }
+                  cleanBuffer(package);
                }
                else{
                   if (send(*current_socket, "0", 2, 0) == -1)
@@ -442,10 +443,10 @@ void *clientCommunication(void *data)
             cleanBuffer(buffer);
             bool fileExists = false;
             std::string entryString = "\0";
-            if(std::filesystem::exists("anton/")){
+            if(std::filesystem::exists(directory)){
                for (const auto & entry : std::filesystem::directory_iterator(directory)){
                   msgCount++;
-                  if(msgCount == 4){
+                  if(msgCount == index){
                      entryString = entry.path();
                   }
                }
@@ -476,6 +477,89 @@ void *clientCommunication(void *data)
                   return NULL;
                }
                waiting = false;
+            }
+         }
+      }
+      if(strcmp(buffer, "DEL") == 0){
+          cleanBuffer(buffer);
+         std::ifstream file;
+         std::string line = "\0";
+         std::string allText = "\0";
+         int msgCount = 0;
+         std::string msgCounterString = "\0";
+         bool waiting = true;
+         //char username[9];
+         printf("Waiting for data\n");
+         while(waiting){
+            size = recv(*current_socket, buffer, BUF - 1, 0);
+            /////////////////////////////////////
+            if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
+                break;
+            }
+            // remove ugly debug message, because of the sent newline of client
+            if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+            {
+                size -= 2;
+            }
+            else if (buffer[size - 1] == '\n')
+            {
+                --size;
+            }
+            //////////////////////////////////////
+            printf("Message received in DEL command: %s\n", buffer); 
+            size = strlen(buffer);
+            char username[size];
+            strcpy(username, buffer);
+            char* directory{ new char[strlen(username) + 1 + 1] };
+            directory = strcpy(directory, username);
+            directory = strcat(directory, "/");
+            cleanBuffer(buffer);
+            // const char* txt =".txt\0";
+            //    char* filename{ new char[strlen(username) + strlen(txt) + 1] };
+            //    filename = strcpy(filename, username);
+            //    filename = strcat(filename, txt);
+            //    printf("Composed filename: %s\n", filename); 
+            size = recv(*current_socket, buffer, BUF - 1, 0);
+            /////////////////////////////////////
+            if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
+                break;
+            }
+            // remove ugly debug message, because of the sent newline of client
+            if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+            {
+                size -= 2;
+            }
+            else if (buffer[size - 1] == '\n')
+            {
+                --size;
+            }
+            //////////////////////////////////////            
+            int index = atoi(buffer);
+            printf("Number received in DEL command: %d\n", index); 
+            cleanBuffer(buffer);
+            bool fileExists = false;
+            std::string entryString = "\0";
+            if(std::filesystem::exists(directory)){
+               for (const auto & entry : std::filesystem::directory_iterator(directory)){
+                  msgCount++;
+                  if(msgCount == index){
+                     fileExists = true;
+                     entryString = entry.path();
+                     std::filesystem::remove(entryString);
+                     if (send(*current_socket, "OK", 3, 0) == -1){
+                        perror("send answer failed");
+                        return NULL;
+                     }
+                     break;
+                  }
+               }
+            waiting = false;
+            }
+            if(fileExists == false){
+               if (send(*current_socket, "ERR", 4, 0) == -1){
+                  perror("send answer failed");
+                  return NULL;
+               }
             }
          }
       }
