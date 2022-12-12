@@ -44,7 +44,7 @@ void sendUser(int create_socket, char* buffer){
       fgets(buffer, BUF, stdin);
    }
    int size = strlen(buffer);
-   buffer[size-1] = '\0';
+   //buffer[size] = '\0';
    send(create_socket, buffer, size, 0);
 }
 
@@ -56,7 +56,7 @@ void sendNum(int create_socket, char* buffer){
       fgets(buffer, BUF, stdin);
    }
    int size = strlen(buffer);
-   buffer[size-1] = '\0';
+   //buffer[size-1] = '\0';
    send(create_socket, buffer, size, 0);
 }
 
@@ -147,7 +147,7 @@ int main(int argc, char **argv)
          if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
             int enterPress = 1;
-            bool delimiterSent = false;
+            //bool delimiterSent = false;
             while(buffer[0] != '.'){
                /*if(enterPress < 2)
                printf("Sender >> ");
@@ -183,45 +183,53 @@ int main(int argc, char **argv)
                if(buffer[0] == '.') 
                   delimiterSent = true;
                enterPress++;*/
-            }
-            switch(enterPress){
-               case 1: 
-                  std::cout << "Sender >> ";
-                  sendUser(create_socket, buffer);
-                  enterPress++;
-                  break;
-               case 2: 
-                  std::cout << "Receiver >> ";
-                  sendUser(create_socket, buffer);
-                  enterPress++;
-                  break; 
-               case 3: 
-                  std::cout << "Subject >> ";
-                  fgets(buffer, BUF, stdin); 
-                  while(strlen(buffer) > 80){
-                     std::cout << "Subject line too long. Max 80 characters allowed" << std::endl;
-                     printf("Subject >> ");
+               switch(enterPress){
+                  case 1: 
+                     std::cout << "Sender >> ";
+                     sendUser(create_socket, buffer);
+                     enterPress++;
+                     break;
+                  case 2: 
+                     std::cout << "Receiver >> ";
+                     sendUser(create_socket, buffer);
+                     enterPress++;
+                     break; 
+                  case 3: 
+                     std::cout << "Subject >> ";
                      fgets(buffer, BUF, stdin); 
-                  }
-                  size = strlen(buffer);
-                  send(create_socket, buffer, size, 0);
-                  enterPress++;
-                  break;
-               default:
-                  std::cout << "Message >> ";
-                  fgets(buffer, BUF, stdin);
-                  size = strlen(buffer);
-                  send(create_socket, buffer, size, 0);
-                  break;
+                     while(strlen(buffer) > 80){
+                        std::cout << "Subject line too long. Max 80 characters allowed" << std::endl;
+                        printf("Subject >> ");
+                        fgets(buffer, BUF, stdin); 
+                     }
+                     size = strlen(buffer);
+                     send(create_socket, buffer, size, 0);
+                     enterPress++;
+                     break;
+                  default:
+                     std::cout << "Message >> ";
+                     // char msgBuffer[INT32_MAX];
+                     // fgets(msgBuffer, INT32_MAX, stdin);
+                     // //int packSize;
+                     // while(strlen(buffer) > BUF){
+
+                     // }
+                     fgets(buffer, BUF, stdin);
+                     size = strlen(buffer);
+                     send(create_socket, buffer, size, 0);
+                     break;
+               }
             }
+            
          }
          else if(strcmp(buffer, "LIST") == 0){
             send(create_socket, buffer, size, 0);
             printf("Username >> ");
-            // fgets(buffer, BUF, stdin);
-            // size = strlen(buffer);
-            // send(create_socket, buffer, size, 0);
-            sendUser(create_socket, buffer);
+            fgets(buffer, BUF, stdin);
+            size = strlen(buffer);
+            buffer[size-1] = '\0';
+            send(create_socket, buffer, size, 0);
+            //sendUser(create_socket, buffer);
          }
          else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
             send(create_socket, buffer, size, 0);

@@ -7,11 +7,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
+#include <bits/stdc++.h>
 #include <iostream>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <sstream>
 #include <fstream>
 #include <charconv>
 #include <array>
+#include <filesystem>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -268,9 +272,9 @@ void *clientCommunication(void *data)
                   state++;
                break;
                default:
-                  if(message[0] == '\0')
+                  if(message[0] == '\0' && message[0] != '.')
                      strcpy(message, buffer);
-                  else
+                  else if(message[0] != '.')
                      strcat(message, buffer);
                   state++;
                break;
@@ -282,11 +286,17 @@ void *clientCommunication(void *data)
                std::ifstream checkFile;
                std::string line;
                int UID = 1;
-               const char* type = "REC_";
-               const char* txt =".txt";
-               char* filename{ new char[strlen(type)+ strlen(receiver) + strlen(txt) + 1] };
-               filename = strcpy(filename, type);
-               filename = strcat(filename, receiver);
+               // const char* type = "REC_";
+               size = strlen(receiver);
+               char path[size];
+               strcpy(path,receiver);
+               // path = strcat(path,receiver);
+               mkdir(path,0777);
+               const char* txt ="";
+               char* filename{ new char[strlen(path) + 1 + strlen(subject) + strlen(txt) + 1] };
+               filename = strcpy(filename, path);
+               filename = strcat(filename, "/");
+               filename = strcat(filename, subject);
                filename = strcat(filename, txt);
                printf("Composed filename: %s\n", filename); 
                checkFile.open(filename);
@@ -316,15 +326,15 @@ void *clientCommunication(void *data)
          }
       }
       if(strcmp(buffer, "LIST") == 0){
-         //cleanBuffer(buffer);
+         cleanBuffer(buffer);
          std::ifstream file;
          std::string line;
-         std::string allSubjects;
-         std::string subjectStr = "Subject";
+         std::string allSubjects = "\0";
+         std::string subjectStr = "Subject: ";
          int msgCount = 0;
          std::string msgCounterString;
          bool waiting = true;
-         char username[9];
+         //char username[9];
          printf("Waiting for data\n");
          while(waiting){
             size = recv(*current_socket, buffer, BUF - 1, 0);
@@ -342,32 +352,28 @@ void *clientCommunication(void *data)
                 --size;
             }
             //////////////////////////////////////
-            strcpy(username, buffer);
-            printf("Message received in LIST command: %s\n", username); 
-            const char* type = "REC_";
-            const char* txt =".txt";
-            char* filename{ new char[strlen(type)+ strlen(username) + strlen(txt) + 1] };
-            filename = strcpy(filename, type);
-            filename = strcat(filename, username);
-            filename = strcat(filename, txt);
-            printf("Composed filename: %s\n", filename); 
-            file.open(filename);
-            if(file.is_open()){
-               while(getline (file, line)){
-                  if(line.substr(0,6) == subjectStr.substr(0,6)){
-                     line.erase(0,8);
-                     msgCounterString = std::to_string(msgCount);
-                     allSubjects = msgCounterString + ": " + line + "\n";
-                     msgCount++;
-                  }
-               }
-            }
-            else{
-               std::cout << "Unable to open file " << filename << std::endl;
+         //    //strcpy(username, buffer);
+            printf("Message received in LIST command: %s\n", buffer); 
+         //    const char* type = "REC_";
+         //    const char* txt =".txt";
+            char* directory{ new char[strlen(buffer) + 1 + 1] };
+            directory = strcpy(directory, buffer);
+            directory = strcat(directory, "/");
+            cleanBuffer(buffer);
+            for (const auto & entry : std::filesystem::directory_iterator(directory)){
+               msgCount++;
+               msgCounterString = std::to_string(msgCount);
+               std::string entryString = entry.path();
+               entryString = entryString.substr(entryString.find_last_of("/")+1);
+               
+               std::cout << msgCount << ": " << entryString << std::endl;
+
+               allSubjects += msgCounterString + ":" + entryString + "\n";
+               waiting = false;
             }
             if(msgCount > 0){
                msgCounterString = std::to_string(msgCount);
-               allSubjects = msgCounterString + ": " + line + "\n";
+               allSubjects = msgCounterString + "\n" + allSubjects;
                int size = allSubjects.size();
                char package[size+1];
                strcpy(package, allSubjects.c_str());
@@ -386,7 +392,50 @@ void *clientCommunication(void *data)
                }
                waiting = false;
             }
-            cleanBuffer(buffer);
+            // for(const std::filesystem::directory_entry& cur : std::filesystem::directory_iterator(directory)){
+            //       if(strCompareInsensitive(name, std::filesystem::path(cur).filename())){
+            //          std::cout << pid << ": " << filename << ": " << std::filesystem::absolute(cur) << std::endl;
+            //          return true;
+            //       }     
+            // } 
+         //    cleanBuffer(buffer);
+         //    printf("Composed filename: %s\n", filename); 
+         //    file.open(filename);
+         //    if(file.is_open()){
+         //       while(getline (file, line)){
+         //          if(line.substr(0,8) == subjectStr.substr(0,8)){
+         //             msgCount++;
+         //             std::cout << line.substr(9,90) << std::endl;
+         //             msgCounterString = std::to_string(msgCount);
+         //             allSubjects += msgCounterString + ":" + line + "\n";
+         //          }
+         //       }
+         //    }
+         //    else{
+         //       std::cout << "Unable to open file " << filename << std::endl;
+         //    }
+         //    if(msgCount > 0){
+         //       msgCounterString = std::to_string(msgCount);
+         //       allSubjects = msgCounterString + ": " + line + "\n";
+         //       int size = allSubjects.size();
+         //       char package[size+1];
+         //       strcpy(package, allSubjects.c_str());
+         //       if (send(*current_socket, package, size, 0) == -1)
+         //       {
+         //          perror("send answer failed");
+         //          return NULL;
+         //       }
+         //       waiting = false;
+         //    }
+         //    else{
+         //       if (send(*current_socket, "0", 2, 0) == -1)
+         //       {
+         //          perror("send answer failed");
+         //          return NULL;
+         //       }
+         //       waiting = false;
+         //    }
+         //    cleanBuffer(buffer);
          }
       }
 
