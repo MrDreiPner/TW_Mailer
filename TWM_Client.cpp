@@ -147,7 +147,6 @@ int main(int argc, char **argv)
          if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
             int enterPress = 1;
-            //bool delimiterSent = false;
             while(buffer[0] != '.'){
                /*if(enterPress < 2)
                printf("Sender >> ");

@@ -276,7 +276,7 @@ void *clientCommunication(void *data)
                   if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
                      strcpy(message, buffer);
                   else if(!(buffer[0] == '.')){
-                     printf("if . i should not be here --> content is %s", buffer);
+                     //printf("if . i should not be here --> content is %s", buffer);
                      strcat(message, buffer);
                   }
                   else
@@ -313,7 +313,6 @@ void *clientCommunication(void *data)
       if(strcmp(buffer, "LIST") == 0){
          cleanBuffer(buffer);
          std::ifstream file;
-         std::string line = "\0";
          std::string allSubjects = "\0";
          int msgCount = 0;
          std::string msgCounterString = "\0";
@@ -385,7 +384,100 @@ void *clientCommunication(void *data)
       }
 
       if(strcmp(buffer, "READ") == 0){
-         
+         cleanBuffer(buffer);
+         std::ifstream file;
+         std::string line = "\0";
+         std::string allText = "\0";
+         int msgCount = 0;
+         std::string msgCounterString = "\0";
+         bool waiting = true;
+         //char username[9];
+         printf("Waiting for data\n");
+         while(waiting){
+            size = recv(*current_socket, buffer, BUF - 1, 0);
+            /////////////////////////////////////
+            if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
+                break;
+            }
+            // remove ugly debug message, because of the sent newline of client
+            if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+            {
+                size -= 2;
+            }
+            else if (buffer[size - 1] == '\n')
+            {
+                --size;
+            }
+            //////////////////////////////////////
+            printf("Message received in READ command: %s\n", buffer); 
+            size = strlen(buffer);
+            char username[size];
+            strcpy(username, buffer);
+            char* directory{ new char[strlen(username) + 1 + 1] };
+            directory = strcpy(directory, username);
+            directory = strcat(directory, "/");
+            cleanBuffer(buffer);
+            // const char* txt =".txt\0";
+            //    char* filename{ new char[strlen(username) + strlen(txt) + 1] };
+            //    filename = strcpy(filename, username);
+            //    filename = strcat(filename, txt);
+            //    printf("Composed filename: %s\n", filename); 
+            size = recv(*current_socket, buffer, BUF - 1, 0);
+            /////////////////////////////////////
+            if(receiveMsgErrHandling(size)){ //returns true if an error has occured and ends the loop
+                break;
+            }
+            // remove ugly debug message, because of the sent newline of client
+            if (buffer[size - 2] == '\r' && buffer[size - 1] == '\n')
+            {
+                size -= 2;
+            }
+            else if (buffer[size - 1] == '\n')
+            {
+                --size;
+            }
+            //////////////////////////////////////            
+            int index = atoi(buffer);
+            printf("Number received in READ command: %d\n", index); 
+            cleanBuffer(buffer);
+            bool fileExists = false;
+            std::string entryString = "\0";
+            if(std::filesystem::exists("anton/")){
+               for (const auto & entry : std::filesystem::directory_iterator(directory)){
+                  msgCount++;
+                  if(msgCount == 4){
+                     entryString = entry.path();
+                  }
+               }
+               file.open(entryString);
+                  if(file.is_open()){
+                     fileExists = true;
+                     while(getline(file, line)){
+                        allText += line + "\n";
+                     }
+                  }
+                  else{
+                     std::cout << "Unable to open file";
+               }
+               int size = allText.size();
+               char package[size+1];
+               strcpy(package, allText.c_str());
+               if (send(*current_socket, package, size, 0) == -1)
+               {
+                  perror("send answer failed");
+                  return NULL;
+               }
+               waiting = false;
+            }
+            if(!fileExists){
+               if (send(*current_socket, "0", 2, 0) == -1)
+               {
+                  perror("send answer failed");
+                  return NULL;
+               }
+               waiting = false;
+            }
+         }
       }
 
     //ignore error
