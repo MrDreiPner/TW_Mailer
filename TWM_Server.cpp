@@ -222,6 +222,7 @@ void *clientCommunication(void *data)
             break;
       buffer[size] = '\0';
       printf("Message received: %s\n", buffer); 
+
       if(strcmp(buffer, "SEND") == 0){
          int state = 0;
          bool messageIncomplete = true;
@@ -253,14 +254,68 @@ void *clientCommunication(void *data)
                   if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
                      strcpy(message, buffer);
                   else if(!(buffer[0] == '.')){
+                     //printf("if . i should not be here --> content is %s", buffer);
                      strcat(message, buffer);
                   }
                   else
                      state++;
+                  ////////// LONG MESSAGE NON FUNCTIONAL
+                  /*bool longTransmission = false;
+                  if(strcmp(buffer,"LONG_TRANSMISSION") == 0){
+                     printf("Start LONG_TRANSMISSION\n");
+                     longTransmission = true;
+                     while(longTransmission){
+                        size = recv(*current_socket, buffer, BUF - 1, 0);
+                        if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                           break;
+                        buffer[size] = '\0';
+                        if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
+                           strcpy(message, buffer);
+                        else if(!(buffer[0] == '.')){
+                           strcat(message, buffer);
+                        }
+                        else{
+                           state++;
+                        }
+
+                        size = recv(*current_socket, buffer, BUF - 1, 0);
+                        if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                           break;
+                        buffer[size] = '\0';
+                        std::cout << buffer << std::endl;
+                        if(strcmp(buffer,"END_TRANSMISSION") == 0){
+                           longTransmission = false;
+                        }
+                     }
+                  }
+                  else{   
+                     printf("Start SHORT_TRANSMISSION\n");  
+                     size = recv(*current_socket, buffer, BUF - 1, 0);
+                     if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                        break;
+                     buffer[size] = '\0';
+                     printf("Message received in SHORT_SEND: %s\n", buffer);
+                     if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
+                        strcpy(message, buffer);
+                     else if(!(buffer[0] == '.')){
+                        strcat(message, buffer);
+                     }
+                     else if(buffer[0] == '.'){
+                        state++;
+                     }
+                     printf("Current message: %s\n", message);
+                     cleanBuffer(buffer);
+                     size = recv(*current_socket, buffer, BUF, 0);
+                     if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                        break;
+                     buffer[size] = '\0';
+                     printf("END_TRANSMISSION = %s\n", buffer); ///////////// LAST END TRANSMISSION DID NOT GET SENT OR RECEIVED
+                     cleanBuffer(buffer);
+                  }*/
                break;
-            }
-            printf("Message received in SEND command: %s\n", buffer); 
-            if(buffer[0] == '.'){
+            } 
+            printf("Message received in SEND command: %s\n", buffer);
+            if(state > 3){
                printf("SEND message completed\n");
                std::ofstream file;
                size = strlen(receiver);
@@ -275,7 +330,7 @@ void *clientCommunication(void *data)
                filename = strcat(filename, txt);
                printf("Composed filename: %s\n", filename); 
                file.open(filename, std::ios_base::app);
-               file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "Message: \n" << message << std::endl;
+               file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: \n" << message << std::endl;
                file.close();
                messageIncomplete = false;
                if (send(*current_socket, "OK", 3, 0) == -1)
@@ -480,7 +535,7 @@ void *clientCommunication(void *data)
             else{
                if (send(*current_socket, "ERR", 4, 0) == -1){
                      perror("send answer failed");
-                     return NULL;
+                     return 0;
                }
             }
             waiting = false;

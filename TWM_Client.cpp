@@ -56,7 +56,7 @@ void sendNum(int create_socket, char* buffer){
       fgets(buffer, BUF, stdin);
    }
    int size = strlen(buffer);
-   //buffer[size-1] = '\0';
+   //buffer[size] = '\0';
    send(create_socket, buffer, size, 0);
 }
 
@@ -147,6 +147,8 @@ int main(int argc, char **argv)
          // SENDING DATA
          // send will fail if connection is closed, but does not set
          // the error of send, but still the count of bytes sent
+
+
          if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
             int enterPress = 1;
@@ -171,6 +173,7 @@ int main(int argc, char **argv)
                         fgets(buffer, BUF, stdin); 
                      }
                      size = strlen(buffer);
+                     buffer[size-1] = '\0';
                      send(create_socket, buffer, size, 0);
                      enterPress++;
                      break;
@@ -179,6 +182,56 @@ int main(int argc, char **argv)
                      fgets(buffer, BUF, stdin);
                      size = strlen(buffer);
                      send(create_socket, buffer, size, 0);
+                     ////////// LONG MESSAGE NON FUNCTIONAL ////////////
+                     /*std::cout << "Message >> ";
+                     fgets(buffer, 5000, stdin);
+                     size = strlen(buffer);
+                     buffer[size-1] = '\0';
+                     if(size > BUF){
+                        char tempBuffer[BUF] = "\0";
+                        int bottom = 0;
+                        bool tooBig = true;
+                        send(create_socket, "LONG_TRANSMISSION", 18, 0);
+                        while(tooBig){
+                           strncpy(tempBuffer, &buffer[bottom], BUF);
+                           tempBuffer[BUF] = '\0';
+                           size -= BUF;
+                           bottom += BUF;
+                           if(size < BUF){
+                              if (send(create_socket, tempBuffer, size, 0) == -1){
+                                 perror("send failed");
+                                 return 0;
+                              }
+                              if (send(create_socket, "END_TRANSMISSION", 17, 0) == -1){
+                                 perror("send failed");
+                                 return 0;
+                              }
+                              tooBig = false;
+                              break;
+                           }
+                           else{
+                              send(create_socket, tempBuffer, BUF, 0);
+                              send(create_socket, "KEEP_TRANSMISSION", 18, 0);
+                           }
+                        }
+                     }
+                     else{
+                        printf("Start SHORT_TRANSMISSION\n");  
+                        if (send(create_socket, "SHORT_TRANSMISSION", 19, 0) == -1){
+                           perror("ST send failed");
+                           return 0;
+                        }
+                        std::cout << "Send message: " << buffer << std::endl;
+                        if (send(create_socket, buffer, size, 0) == -1){
+                           perror("PKG send failed");
+                           return 0;
+                        }
+                        printf("Start END_TRANSMISSION\n");             ///////////// LAST END TRANSMISSION DID NOT GET SENT OR RECEIVED
+                        if (send(create_socket, "END_TRANSMISSION", 17, 0) == -1){
+                           perror("ET send failed");
+                           return 0;
+                        }
+                     }*/
                      break;
                }
             }
