@@ -32,3 +32,16 @@
                if(buffer[0] == '.') 
                   delimiterSent = true;
                enterPress++;*/
+
+               
+//send verified Number to Server
+void sendNum(int create_socket, char* buffer){
+   fgets(buffer, BUF, stdin);
+   while(!verify(buffer, "num")){
+      printf(">> ");
+      fgets(buffer, BUF, stdin);
+   }
+   int size = strlen(buffer);
+   //buffer[size-1] = '\0';
+   send(create_socket, buffer, size, 0);
+}
