@@ -107,6 +107,7 @@ int main(int argc, char **argv)
    ////////////////////////////////////////////////////////////////////////////
    // RECEIVE DATA
    size = recv(create_socket, buffer, BUF - 1, 0);
+   buffer[size] = '\0';
    if (size == -1)
    {
       perror("recv error");
@@ -139,49 +140,17 @@ int main(int argc, char **argv)
             buffer[size] = 0;
          }
          isQuit = strcmp(buffer, "QUIT") == 0;
-
+         int tmpSize = strlen(buffer);
+         char tmpBuffer[tmpSize];
+         strcpy(tmpBuffer, buffer);
          //////////////////////////////////////////////////////////////////////
-         // SEND DATA
+         // SENDING DATA
          // send will fail if connection is closed, but does not set
          // the error of send, but still the count of bytes sent
          if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
             int enterPress = 1;
             while(buffer[0] != '.'){
-               /*if(enterPress < 2)
-               printf("Sender >> ");
-               else if(enterPress <= 2)
-               printf("Receiver >> ");
-               fgets(buffer, BUF, stdin);
-               if(enterPress <= 2){
-                  while(!verify(buffer, "user")){
-                     if(enterPress < 2)
-                     printf("Sender >> ");
-                     else
-                     printf("Receiver >> ");
-                     fgets(buffer, BUF, stdin);
-                  }    
-               }
-               if(enterPress == 3){
-                  printf("Subject >> ");
-                  fgets(buffer, BUF, stdin); 
-                  while(strlen(buffer) > 80){
-                     std::cout << "Subject line too long. Max 80 characters allowed" << std::endl;
-                     printf("Subject >> ");
-                     fgets(buffer, BUF, stdin); 
-                  }
-               }
-               if(enterPress > 3){
-                  printf("Message >> ");
-                  fgets(buffer, BUF, stdin);
-               }
-               if(!delimiterSent){
-                  size = strlen(buffer);
-                  send(create_socket, buffer, size, 0);   
-               }
-               if(buffer[0] == '.') 
-                  delimiterSent = true;
-               enterPress++;*/
                switch(enterPress){
                   case 1: 
                      std::cout << "Sender >> ";
@@ -213,7 +182,6 @@ int main(int argc, char **argv)
                      break;
                }
             }
-            
          }
          else if(strcmp(buffer, "LIST") == 0){
             send(create_socket, buffer, size, 0);
@@ -233,34 +201,27 @@ int main(int argc, char **argv)
                send(create_socket, buffer, size, 0);
             }
          }
-         if ((send(create_socket, buffer, size, 0)) == -1) 
-         {
-            perror("send error");
-            break;
-         }
-         
+
          //////////////////////////////////////////////////////////////////////
          // RECEIVE FEEDBACK
-         size = recv(create_socket, buffer, BUF - 1, 0);
-         std::cout << "<< " << buffer << std::endl;
-         if (size == -1)
-         {
-            perror("recv error");
-            break;
+         if(strcmp(tmpBuffer, "SEND") == 0 || strcmp(tmpBuffer, "LIST") == 0 || 
+            strcmp(tmpBuffer, "READ") == 0 || strcmp(tmpBuffer, "DEL") == 0){
+            size = recv(create_socket, buffer, BUF - 1, 0);
+            buffer[size] = '\0';
+            std::cout << "<< " << buffer << std::endl;
+            if (size == -1)
+            {
+               perror("recv error");
+               break;
+            }
+            else if (size == 0)
+            {
+               printf("Server closed remote socket\n"); // ignore error
+               break;
+            }
          }
-         else if (size == 0)
-         {
-            printf("Server closed remote socket\n"); // ignore error
-            break;
-         }
-         else
-         {
-     // ignore error
-            // if (strcmp("OK", buffer) != 0)
-            // {
-            //    fprintf(stderr, "<< Server error occured, abort\n");
-            //    break;
-            // }
+         else if(strcmp(tmpBuffer, "QUIT") != 0){
+            std::cout << "Unkown command" << std::endl;
          }
       }
    } while (!isQuit);

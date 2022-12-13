@@ -1,0 +1,34 @@
+               /*if(enterPress < 2)
+               printf("Sender >> ");
+               else if(enterPress <= 2)
+               printf("Receiver >> ");
+               fgets(buffer, BUF, stdin);
+               if(enterPress <= 2){
+                  while(!verify(buffer, "user")){
+                     if(enterPress < 2)
+                     printf("Sender >> ");
+                     else
+                     printf("Receiver >> ");
+                     fgets(buffer, BUF, stdin);
+                  }    
+               }
+               if(enterPress == 3){
+                  printf("Subject >> ");
+                  fgets(buffer, BUF, stdin); 
+                  while(strlen(buffer) > 80){
+                     std::cout << "Subject line too long. Max 80 characters allowed" << std::endl;
+                     printf("Subject >> ");
+                     fgets(buffer, BUF, stdin); 
+                  }
+               }
+               if(enterPress > 3){
+                  printf("Message >> ");
+                  fgets(buffer, BUF, stdin);
+               }
+               if(!delimiterSent){
+                  size = strlen(buffer);
+                  send(create_socket, buffer, size, 0);   
+               }
+               if(buffer[0] == '.') 
+                  delimiterSent = true;
+               enterPress++;*/
