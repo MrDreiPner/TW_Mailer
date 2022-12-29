@@ -16,6 +16,7 @@
 #include <charconv>
 #include <array>
 #include <filesystem>
+#include <ldap.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -186,7 +187,58 @@ void *clientCommunication(void *data){
       buffer[size] = '\0';
       printf("Message received: %s\n", buffer);
       //SEND Command Handling 
-      if(strcmp(buffer, "SEND") == 0){
+      /*if(strcmp(buffer, "LOGIN") == 0){ TBD!!!
+         const char *ldapUri = "ldap://ldap.technikum-wien.at:389";
+         const int ldapVersion = LDAP_VERSION3;
+
+         // read username (bash: export ldapuser=<yourUsername>)
+         char ldapBindUser[256];
+         char rawLdapUser[128];
+         if (argc >= 3 && strcmp(argv[1], "--user") == 0)
+         {
+            strcpy(rawLdapUser, argv[2]);
+            sprintf(ldapBindUser, "uid=%s,ou=people,dc=technikum-wien,dc=at", rawLdapUser);
+            printf("user set to: %s\n", ldapBindUser);
+         }
+         else
+         {
+            const char *rawLdapUserEnv = getenv("ldapuser");
+            if (rawLdapUserEnv == NULL)
+            {
+               printf("(user not found... set to empty string)\n");
+               strcpy(ldapBindUser, "");
+            }
+            else
+            {
+               sprintf(ldapBindUser, "uid=%s,ou=people,dc=technikum-wien,dc=at", rawLdapUserEnv);
+               printf("user based on environment variable ldapuser set to: %s\n", ldapBindUser);
+            }
+         }
+
+         // read password (bash: export ldappw=<yourPW>)
+         char ldapBindPassword[256];
+         if (argc == 4 && strcmp(argv[3], "--pw") == 0)
+         {
+            strcpy(ldapBindPassword, getpass());
+            printf("pw taken over from commandline\n");
+         }
+         else
+         {
+            const char *ldapBindPasswordEnv = getenv("ldappw");
+            if (ldapBindPasswordEnv == NULL)
+            {
+               strcpy(ldapBindPassword, "");
+               printf("(pw not found... set to empty string)\n");
+            }
+            else
+            {
+               strcpy(ldapBindPassword, ldapBindPasswordEnv);
+               printf("pw taken over from environment variable ldappw\n");
+            }
+         }
+
+      }
+      else*/ if(strcmp(buffer, "SEND") == 0){
          int state = 0;
          bool messageIncomplete = true;
          char sender[9] = "\0";

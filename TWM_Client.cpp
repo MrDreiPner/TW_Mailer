@@ -8,6 +8,7 @@
 #include <string.h>
 #include <iostream>
 #include <regex>
+#include <ldap.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -119,7 +120,20 @@ int main(int argc, char **argv){
          // SENDING DATA
          // send will fail if connection is closed, but does not set
          // the error of send, but still the count of bytes sent
-         if(strcmp(buffer, "SEND") == 0){
+         if(strcmp(buffer, "LOGIN") == 0){
+            send(create_socket, buffer, size, 0);
+            printf("LDAP Username >> ");
+            fgets(buffer, BUF, stdin);
+            size = strlen(buffer);
+            buffer[size-1] = '\0';
+            send(create_socket, buffer, size, 0);
+            printf("Password >> ");
+            fgets(buffer, BUF, stdin);
+            size = strlen(buffer);
+            buffer[size-1] = '\0';
+            send(create_socket, buffer, size, 0);
+         }
+         else if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
             int enterPress = 1;
             while(buffer[0] != '.'){
