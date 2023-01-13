@@ -40,19 +40,25 @@ std::vector<pthread_t*> threads;
 void signalHandler(int sig);
 void *clientCommunication(void *data);
 
+struct arg_struct{
+   int socket;
+   char *dataStore;
+}typedef arg_struct;
 ///////////////////////////////////////////////////////////////////////////////
 
 int main(int argc , char *argv[]){
    socklen_t addrlen;
    struct sockaddr_in address, cliaddress;
    int reuseValue = 1;
+   arg_struct args;
    if(argc < 3){
       perror("Too few arguments");
       return EXIT_FAILURE;
    }
    int PORT = std::strtol(argv[1], nullptr, 10);
-   char* fileLocation = argv[2];
-   std::cout << "passed PORT:" << PORT << "\nFile location = " << fileLocation << std::endl;
+   args.dataStore = new char[sizeof(argv[2])];
+   args.dataStore = argv[2];
+   std::cout << "passed PORT:" << PORT << "\nFile location = " << args.dataStore << std::endl;
    ////////////////////////////////////////////////////////////////////////////
    // SIGNAL HANDLER
    if (signal(SIGINT, signalHandler) == SIG_ERR){
@@ -132,8 +138,9 @@ int main(int argc , char *argv[]){
          }
          else{
             printf("Client connected from %s:%d...\n", inet_ntoa(cliaddress.sin_addr), ntohs(cliaddress.sin_port));
+            args.socket = new_socket;
             pthread_t *newThread = new pthread_t();
-            if(pthread_create(newThread, NULL, clientCommunication, (void *)&new_socket) == 0){
+            if(pthread_create(newThread, NULL, clientCommunication, (void *)&args) == 0){
                threads.push_back(newThread);
                pthread_detach(*newThread);
                
@@ -194,15 +201,17 @@ void cleanBuffer (char* buffer){
 void *clientCommunication(void* data){
    char buffer[BUF];
    int size;
-   int *current_socketPT = (int *) data;
-   int current_socket = *current_socketPT;
    int failedLoginCount = 3;
    bool verified = false;
    char username[9];
+   arg_struct *args = (arg_struct *) data;
+   int current_socket = args->socket;
+   char* storageLocation = args->dataStore;
 
    ////////////////////////////////////////////////////////////////////////////
    // SEND welcome message
    std::cout <<"This is thread numba: " << pthread_self() << std::endl;
+   std::cout <<"passed storage location = " << storageLocation << std::endl;
    strcpy(buffer, "Welcome to myserver!\r\nPlease enter your commands...\r\n");
    if (send(current_socket, buffer, strlen(buffer), 0) == -1){
       perror("send failed");
@@ -284,18 +293,14 @@ void *clientCommunication(void* data){
          if (rc != LDAP_SUCCESS){
             fprintf(stderr, "LDAP bind error: %s\n", ldap_err2string(rc));
             failedLoginCount--;
-            std::string message = "Wrong Credentials. Remaining Attempts: " + std::to_string(failedLoginCount);
             if(failedLoginCount == 0){
                //IMPLEMENT BLACKLIST
             }
-            char msg[41];
-            strncpy(msg, message.c_str(), sizeof(msg));
-            size = strlen(msg);
-            send(current_socket, msg, size, 0);
+            send(current_socket, "ERR", 4, 0);
             ldap_unbind_ext_s(ldapHandle, NULL, NULL);
             continue;
          }
-         if (send(current_socket, "Login Successful", 17, 0) == -1){
+         if (send(current_socket, "OK", 3, 0) == -1){
             perror("send answer failed");
             return NULL;
          }

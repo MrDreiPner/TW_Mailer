@@ -8,7 +8,7 @@
 #include <string.h>
 #include <iostream>
 #include <regex>
-//#include <ldap.h>
+#include <ldap.h>
 #include <termios.h>
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -90,11 +90,20 @@ const char *getpass(){
    return password.c_str();
 }
 
+void recvErrorMsgHandling(int size){
+   if (size == -1){
+      perror("recv error");
+   }
+   else if (size == 0){
+      printf("Server closed remote socket\n"); // ignore error
+   }
+}
 
 int main(int argc, char* argv[]){
    int create_socket;
    char buffer[BUF];
    struct sockaddr_in address;
+   bool loggedIn = false;
    int size;
    int isQuit;
       if(argc < 3){
@@ -180,86 +189,101 @@ int main(int argc, char* argv[]){
             strcpy(buffer, getpass());
             size = strlen(buffer);
             send(create_socket, buffer, size, 0);
+            size = recv(create_socket, buffer, BUF - 1, 0);
+            recvErrorMsgHandling(size);
+            buffer[size] = '\0';
+            if(strcmp(buffer, "OK") == 0){
+               loggedIn = true;
+            }
+            std::cout << "<< " << buffer << std::endl;
          } //SEND command
          else if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
-            int enterPress = 1;
-            while(buffer[0] != '.'){
-               switch(enterPress){
-                  case 1: 
-                     std::cout << "Receiver >> ";
-                     sendUser(create_socket, buffer);
-                     enterPress++;
-                     break; 
-                  case 2: 
-                     std::cout << "Subject >> ";
-                     fgets(buffer, BUF, stdin); 
-                     while(strlen(buffer) > 80){
-                        std::cout << "Subject line too long. Max 80 characters allowed" << std::endl;
-                        printf("Subject >> ");
+            if(loggedIn == false){
+               size = recv(create_socket, buffer, BUF - 1, 0);
+               recvErrorMsgHandling(size);
+               buffer[size] = '\0';
+               std::cout << "<< " << buffer << std::endl;
+            }
+            else{
+               int enterPress = 1;
+               while(buffer[0] != '.'){
+                  switch(enterPress){
+                     case 1: 
+                        std::cout << "Receiver >> ";
+                        sendUser(create_socket, buffer);
+                        enterPress++;
+                        break; 
+                     case 2: 
+                        std::cout << "Subject >> ";
                         fgets(buffer, BUF, stdin); 
-                     }
-                     size = strlen(buffer);
-                     buffer[size-1] = '\0';
-                     send(create_socket, buffer, size, 0);
-                     enterPress++;
-                     break;
-                  default:
-                     std::cout << "Message >> ";
-                     fgets(buffer, BUF, stdin);
-                     size = strlen(buffer);
-                     send(create_socket, buffer, size, 0);
-                     ////////// LONG MESSAGE NON FUNCTIONAL ////////////
-                     /*std::cout << "Message >> ";
-                     fgets(buffer, 5000, stdin);
-                     size = strlen(buffer);
-                     buffer[size-1] = '\0';
-                     if(size > BUF){
-                        char tempBuffer[BUF] = "\0";
-                        int bottom = 0;
-                        bool tooBig = true;
-                        send(create_socket, "LONG_TRANSMISSION", 18, 0);
-                        while(tooBig){
-                           strncpy(tempBuffer, &buffer[bottom], BUF);
-                           tempBuffer[BUF] = '\0';
-                           size -= BUF;
-                           bottom += BUF;
-                           if(size < BUF){
-                              if (send(create_socket, tempBuffer, size, 0) == -1){
-                                 perror("send failed");
-                                 return 0;
+                        while(strlen(buffer) > 80){
+                           std::cout << "Subject line too long. Max 80 characters allowed" << std::endl;
+                           printf("Subject >> ");
+                           fgets(buffer, BUF, stdin); 
+                        }
+                        size = strlen(buffer);
+                        buffer[size-1] = '\0';
+                        send(create_socket, buffer, size, 0);
+                        enterPress++;
+                        break;
+                     default:
+                        std::cout << "Message >> ";
+                        fgets(buffer, BUF, stdin);
+                        size = strlen(buffer);
+                        send(create_socket, buffer, size, 0);
+                        ////////// LONG MESSAGE NON FUNCTIONAL ////////////
+                        /*std::cout << "Message >> ";
+                        fgets(buffer, 5000, stdin);
+                        size = strlen(buffer);
+                        buffer[size-1] = '\0';
+                        if(size > BUF){
+                           char tempBuffer[BUF] = "\0";
+                           int bottom = 0;
+                           bool tooBig = true;
+                           send(create_socket, "LONG_TRANSMISSION", 18, 0);
+                           while(tooBig){
+                              strncpy(tempBuffer, &buffer[bottom], BUF);
+                              tempBuffer[BUF] = '\0';
+                              size -= BUF;
+                              bottom += BUF;
+                              if(size < BUF){
+                                 if (send(create_socket, tempBuffer, size, 0) == -1){
+                                    perror("send failed");
+                                    return 0;
+                                 }
+                                 if (send(create_socket, "END_TRANSMISSION", 17, 0) == -1){
+                                    perror("send failed");
+                                    return 0;
+                                 }
+                                 tooBig = false;
+                                 break;
                               }
-                              if (send(create_socket, "END_TRANSMISSION", 17, 0) == -1){
-                                 perror("send failed");
-                                 return 0;
+                              else{
+                                 send(create_socket, tempBuffer, BUF, 0);
+                                 send(create_socket, "KEEP_TRANSMISSION", 18, 0);
                               }
-                              tooBig = false;
-                              break;
-                           }
-                           else{
-                              send(create_socket, tempBuffer, BUF, 0);
-                              send(create_socket, "KEEP_TRANSMISSION", 18, 0);
                            }
                         }
-                     }
-                     else{
-                        printf("Start SHORT_TRANSMISSION\n");  
-                        if (send(create_socket, "SHORT_TRANSMISSION", 19, 0) == -1){
-                           perror("ST send failed");
-                           return 0;
-                        }
-                        std::cout << "Send message: " << buffer << std::endl;
-                        if (send(create_socket, buffer, size, 0) == -1){
-                           perror("PKG send failed");
-                           return 0;
-                        }
-                        printf("Start END_TRANSMISSION\n");             ///////////// LAST END TRANSMISSION DID NOT GET SENT OR RECEIVED
-                        if (send(create_socket, "END_TRANSMISSION", 17, 0) == -1){
-                           perror("ET send failed");
-                           return 0;
-                        }
-                     }*/
-                     break;
+                        else{
+                           printf("Start SHORT_TRANSMISSION\n");  
+                           if (send(create_socket, "SHORT_TRANSMISSION", 19, 0) == -1){
+                              perror("ST send failed");
+                              return 0;
+                           }
+                           std::cout << "Send message: " << buffer << std::endl;
+                           if (send(create_socket, buffer, size, 0) == -1){
+                              perror("PKG send failed");
+                              return 0;
+                           }
+                           printf("Start END_TRANSMISSION\n");             ///////////// LAST END TRANSMISSION DID NOT GET SENT OR RECEIVED
+                           if (send(create_socket, "END_TRANSMISSION", 17, 0) == -1){
+                              perror("ET send failed");
+                              return 0;
+                           }
+                        }*/
+                        break;
+                  }
                }
             }
          }
@@ -282,21 +306,14 @@ int main(int argc, char* argv[]){
          }
          //////////////////////////////////////////////////////////////////////
          // RECEIVE FEEDBACK
-         if(strcmp(tmpBuffer, "SEND") == 0 || strcmp(tmpBuffer, "LIST") == 0 || 
-            strcmp(tmpBuffer, "READ") == 0 || strcmp(tmpBuffer, "DEL") == 0 || strcmp(tmpBuffer, "LOGIN") == 0){
+         if((strcmp(tmpBuffer, "SEND") == 0 || strcmp(tmpBuffer, "LIST") == 0 || 
+            strcmp(tmpBuffer, "READ") == 0 || strcmp(tmpBuffer, "DEL") == 0 ) && loggedIn){
             size = recv(create_socket, buffer, BUF - 1, 0);
-            if (size == -1){
-               perror("recv error");
-               break;
-            }
-            else if (size == 0){
-               printf("Server closed remote socket\n"); // ignore error
-               break;
-            }
+            recvErrorMsgHandling(size);
             buffer[size] = '\0';
             std::cout << "<< " << buffer << std::endl;
          }
-         else if(strcmp(tmpBuffer, "QUIT") != 0){
+         else if(strcmp(tmpBuffer, "QUIT") != 0 && loggedIn){
             std::cout << "Unknown command" << std::endl;
          }
       }
