@@ -198,6 +198,7 @@ void *clientCommunication(void* data){
    int current_socket = *current_socketPT;
    int failedLoginCount = 3;
    bool verified = false;
+   char username[9];
 
    ////////////////////////////////////////////////////////////////////////////
    // SEND welcome message
@@ -227,7 +228,6 @@ void *clientCommunication(void* data){
          if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
             break;
          buffer[size] = '\0';
-         char username[200];
          char ldapBindUser[256];
          strcpy(username, buffer);
          sprintf(ldapBindUser, "uid=%s,ou=people,dc=technikum-wien,dc=at", username);
@@ -285,6 +285,9 @@ void *clientCommunication(void* data){
             fprintf(stderr, "LDAP bind error: %s\n", ldap_err2string(rc));
             failedLoginCount--;
             std::string message = "Wrong Credentials. Remaining Attempts: " + std::to_string(failedLoginCount);
+            if(failedLoginCount == 0){
+               //IMPLEMENT BLACKLIST
+            }
             char msg[41];
             strncpy(msg, message.c_str(), sizeof(msg));
             size = strlen(msg);
@@ -298,314 +301,343 @@ void *clientCommunication(void* data){
          }
          verified = true;
       }
-      if(strcmp(buffer, "SEND") == 0){       //SEND Command Handling 
-         int state = 0;
-         bool messageIncomplete = true;
-         char sender[9] = "\0";
-         char receiver[9] = "\0";
-         char subject[81] = "\0";
-         char message[BUF+1] = "\0";
-         printf("Waiting for data\n");
-         while(messageIncomplete){
-            cleanBuffer(buffer);
-            size = recv(current_socket, buffer, BUF - 1, 0);
-            if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-               break;
-            buffer[size] = '\0';
-            switch(state){
-               case 0:  //Receive Sender
-                  strcpy(sender, buffer);
-                  state++;
+      if(strcmp(buffer, "SEND") == 0){       //SEND Command Handling
+         if(verified){
+            int state = 0;
+            bool messageIncomplete = true;
+            char sender[9];
+            strcpy(sender, username);
+            char receiver[9] = "\0";
+            char subject[81] = "\0";
+            char message[BUF+1] = "\0";
+            printf("Waiting for data\n");
+            while(messageIncomplete){
+               cleanBuffer(buffer);
+               size = recv(current_socket, buffer, BUF - 1, 0);
+               if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
                   break;
-               case 1:  //Receive Receiver
-                  strcpy(receiver, buffer);
-                  state++;
-                  break;
-               case 2:  //Receive Subject
-                  strcpy(subject, buffer);
-                  state++;
-                  break;
-               case 3:  //Receive Message
-                  if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
-                     strcpy(message, buffer);
-                  else if(!(buffer[0] == '.')){
-                     //printf("if . i should not be here --> content is %s", buffer);
-                     strcat(message, buffer);
-                  }
-                  else
+               buffer[size] = '\0';
+               switch(state){
+                  case 0:  //Receive Receiver
+                     strcpy(receiver, buffer);
                      state++;
-                  ////////// LONG MESSAGE NON FUNCTIONAL
-                  /*bool longTransmission = false;
-                  if(strcmp(buffer,"LONG_TRANSMISSION") == 0){
-                     printf("Start LONG_TRANSMISSION\n");
-                     longTransmission = true;
-                     while(longTransmission){
+                     break;
+                  case 1:  //Receive Subject
+                     strcpy(subject, buffer);
+                     state++;
+                     break;
+                  case 2:  //Receive Message
+                     if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
+                        strcpy(message, buffer);
+                     else if(!(buffer[0] == '.')){
+                        //printf("if . i should not be here --> content is %s", buffer);
+                        strcat(message, buffer);
+                     }
+                     else
+                        state++;
+                     ////////// LONG MESSAGE NON FUNCTIONAL
+                     /*bool longTransmission = false;
+                     if(strcmp(buffer,"LONG_TRANSMISSION") == 0){
+                        printf("Start LONG_TRANSMISSION\n");
+                        longTransmission = true;
+                        while(longTransmission){
+                           size = recv(*current_socket, buffer, BUF - 1, 0);
+                           if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                              break;
+                           buffer[size] = '\0';
+                           if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
+                              strcpy(message, buffer);
+                           else if(!(buffer[0] == '.')){
+                              strcat(message, buffer);
+                           }
+                           else{
+                              state++;
+                           }
+
+                           size = recv(*current_socket, buffer, BUF - 1, 0);
+                           if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                              break;
+                           buffer[size] = '\0';
+                           std::cout << buffer << std::endl;
+                           if(strcmp(buffer,"END_TRANSMISSION") == 0){
+                              longTransmission = false;
+                           }
+                        }
+                     }
+                     else{   
+                        printf("Start SHORT_TRANSMISSION\n");  
                         size = recv(*current_socket, buffer, BUF - 1, 0);
                         if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
                            break;
                         buffer[size] = '\0';
+                        printf("Message received in SHORT_SEND: %s\n", buffer);
                         if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
                            strcpy(message, buffer);
                         else if(!(buffer[0] == '.')){
                            strcat(message, buffer);
                         }
-                        else{
+                        else if(buffer[0] == '.'){
                            state++;
                         }
-
-                        size = recv(*current_socket, buffer, BUF - 1, 0);
+                        printf("Current message: %s\n", message);
+                        cleanBuffer(buffer);
+                        size = recv(*current_socket, buffer, BUF, 0);
                         if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
                            break;
                         buffer[size] = '\0';
-                        std::cout << buffer << std::endl;
-                        if(strcmp(buffer,"END_TRANSMISSION") == 0){
-                           longTransmission = false;
-                        }
-                     }
-                  }
-                  else{   
-                     printf("Start SHORT_TRANSMISSION\n");  
-                     size = recv(*current_socket, buffer, BUF - 1, 0);
-                     if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-                        break;
-                     buffer[size] = '\0';
-                     printf("Message received in SHORT_SEND: %s\n", buffer);
-                     if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
-                        strcpy(message, buffer);
-                     else if(!(buffer[0] == '.')){
-                        strcat(message, buffer);
-                     }
-                     else if(buffer[0] == '.'){
-                        state++;
-                     }
-                     printf("Current message: %s\n", message);
-                     cleanBuffer(buffer);
-                     size = recv(*current_socket, buffer, BUF, 0);
-                     if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-                        break;
-                     buffer[size] = '\0';
-                     printf("END_TRANSMISSION = %s\n", buffer); ///////////// LAST END TRANSMISSION DID NOT GET SENT OR RECEIVED
-                     cleanBuffer(buffer);
-                  }*/
-                  break;
-            } //Putting Received data into .txt file
-            printf("Message received in SEND command: %s\n", buffer);
-            if(state > 3){
-               printf("SEND message completed\n");
-               std::ofstream file;
-               size = strlen(receiver);
-               char path[size];
-               strcpy(path,receiver);
-               mkdir(path,0777);
-               const char* txt =".txt\0";
-               char* filename{ new char[strlen(path) + 1 + strlen(subject) + strlen(txt) + 1] };
-               filename = strcpy(filename, path);
-               filename = strcat(filename, "/");
-               filename = strcat(filename, subject);
-               filename = strcat(filename, txt);
-               printf("Composed filename: %s\n", filename); 
-               file.open(filename, std::ios_base::app);
-               file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: \n" << message << std::endl;
-               file.close();
-               messageIncomplete = false;
-               if (send(current_socket, "OK", 3, 0) == -1){
-                  perror("send answer failed");
-                  return NULL;
-               }
-            }
-            cleanBuffer(buffer);
-         }
-      } //LIST Command Handling
-      if(strcmp(buffer, "LIST") == 0){
-         cleanBuffer(buffer);
-         std::ifstream file;
-         std::string allSubjects = "\0";
-         int msgCount = 0;
-         std::string msgCounterString = "\0";
-         bool waiting = true;
-         printf("Waiting for data\n");
-         while(waiting){
-            size = recv(current_socket, buffer, BUF - 1, 0);
-            if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-               break;
-            buffer[size] = '\0';
-            printf("Message received in LIST command: %s\n", buffer); 
-            char* directory{ new char[strlen(buffer) + 1 + 1] };
-            directory = strcpy(directory, buffer);
-            directory = strcat(directory, "/");
-            cleanBuffer(buffer);
-            if(std::filesystem::exists(directory)){ //Looking for requested Directory
-               for(const auto & entry : std::filesystem::directory_iterator(directory)){
-                  msgCount++;
-                  msgCounterString = std::to_string(msgCount);
-                  std::string entryString = entry.path();
-                  entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
-                  std::cout << msgCount << ": " << entryString + "\n";
-                  allSubjects += msgCounterString + ":" + entryString;
-               }
-               if(msgCount > 0){ //Send List to Client
-                  msgCounterString = std::to_string(msgCount);
-                  allSubjects = "Message count: " + msgCounterString + "\n" + allSubjects;
-                  int size = allSubjects.size();
-                  char package[size+1];
-                  strcpy(package, allSubjects.c_str());
-                  if(send(current_socket, package, size, 0) == -1){
+                        printf("END_TRANSMISSION = %s\n", buffer); ///////////// LAST END TRANSMISSION DID NOT GET SENT OR RECEIVED
+                        cleanBuffer(buffer);
+                     }*/
+                     break;
+               } //Putting Received data into .txt file
+               printf("Message received in SEND command: %s\n", buffer);
+               if(state > 2){
+                  printf("SEND message completed\n");
+                  std::ofstream file;
+                  size = strlen(receiver);
+                  char path[size];
+                  strcpy(path,receiver);
+                  mkdir(path,0777);
+                  const char* txt =".txt\0";
+                  char* filename{ new char[strlen(path) + 1 + strlen(subject) + strlen(txt) + 1] };
+                  filename = strcpy(filename, path);
+                  filename = strcat(filename, "/");
+                  filename = strcat(filename, subject);
+                  filename = strcat(filename, txt);
+                  printf("Composed filename: %s\n", filename); 
+                  file.open(filename, std::ios_base::app);
+                  file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: \n" << message << std::endl;
+                  file.close();
+                  messageIncomplete = false;
+                  if (send(current_socket, "OK", 3, 0) == -1){
                      perror("send answer failed");
                      return NULL;
                   }
-                  cleanBuffer(package);
+               }
+               cleanBuffer(buffer);
+            } 
+         }
+         else{
+            if (send(current_socket, "Not logged in", 14, 0) == -1){
+               perror("send answer failed");
+               return NULL;
+            }
+         }
+
+      } //LIST Command Handling
+      if(strcmp(buffer, "LIST") == 0){
+         if(verified){
+            cleanBuffer(buffer);
+            std::ifstream file;
+            std::string allSubjects = "\0";
+            int msgCount = 0;
+            std::string msgCounterString = "\0";
+            bool waiting = true;
+            printf("Waiting for data\n");
+            while(waiting){
+               size = recv(current_socket, buffer, BUF - 1, 0);
+               if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                  break;
+               buffer[size] = '\0';
+               printf("Message received in LIST command: %s\n", buffer); 
+               char* directory{ new char[strlen(buffer) + 1 + 1] };
+               directory = strcpy(directory, buffer);
+               directory = strcat(directory, "/");
+               cleanBuffer(buffer);
+               if(std::filesystem::exists(directory)){ //Looking for requested Directory
+                  for(const auto & entry : std::filesystem::directory_iterator(directory)){
+                     msgCount++;
+                     msgCounterString = std::to_string(msgCount);
+                     std::string entryString = entry.path();
+                     entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
+                     std::cout << msgCount << ": " << entryString + "\n";
+                     allSubjects += msgCounterString + ":" + entryString;
+                  }
+                  if(msgCount > 0){ //Send List to Client
+                     msgCounterString = std::to_string(msgCount);
+                     allSubjects = "Message count: " + msgCounterString + "\n" + allSubjects;
+                     int size = allSubjects.size();
+                     char package[size+1];
+                     strcpy(package, allSubjects.c_str());
+                     if(send(current_socket, package, size, 0) == -1){
+                        perror("send answer failed");
+                        return NULL;
+                     }
+                     cleanBuffer(package);
+                  }
+                  else{ //No List to be sent
+                     if(send(current_socket, "0", 2, 0) == -1){
+                        perror("send answer failed");
+                        return NULL;
+                     }
+                  }
+                  waiting = false;
                }
                else{ //No List to be sent
                   if(send(current_socket, "0", 2, 0) == -1){
                      perror("send answer failed");
                      return NULL;
                   }
+                  waiting = false;
                }
-               waiting = false;
-            }
-            else{ //No List to be sent
-               if(send(current_socket, "0", 2, 0) == -1){
-                  perror("send answer failed");
-                  return NULL;
-               }
-               waiting = false;
+            }  
+         }
+         else{
+            if (send(current_socket, "Not logged in", 14, 0) == -1){
+               perror("send answer failed");
+               return NULL;
             }
          }
       } //READ Command Handling
       if(strcmp(buffer, "READ") == 0){
-         cleanBuffer(buffer);
-         std::ifstream file;
-         std::string line = "\0";
-         std::string allText = "\0";
-         std::string msgCounterString = "\0";
-         int msgCount = 0;
-         bool waiting = true;
-         printf("Waiting for data\n");
-         while(waiting){
-            size = recv(current_socket, buffer, BUF - 1, 0);
-            if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-               break;
-            buffer[size] = '\0';
-            printf("Message received in READ command: %s\n", buffer); 
-            size = strlen(buffer);
-            char username[size];
-            strcpy(username, buffer);
-            char* directory{ new char[strlen(username) + 1 + 1] };
-            directory = strcpy(directory, username);
-            directory = strcat(directory, "/");
+         if(verified){
             cleanBuffer(buffer);
-            size = recv(current_socket, buffer, BUF - 1, 0);
-            if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-               break;
-            buffer[size] = '\0';          
-            int index = atoi(buffer);
-            printf("Number received in READ command: %d\n", index); 
-            cleanBuffer(buffer);
-            std::string entryString = "\0";
-            if(std::filesystem::exists(directory)){ //Looking for requested Directory
-               for(const auto & entry : std::filesystem::directory_iterator(directory)){
-                  msgCount++;
-                  if(msgCount == index){
-                     entryString = entry.path();
-                     printf("File found!\n");
-                     break;
+            std::ifstream file;
+            std::string line = "\0";
+            std::string allText = "\0";
+            std::string msgCounterString = "\0";
+            int msgCount = 0;
+            bool waiting = true;
+            printf("Waiting for data\n");
+            while(waiting){
+               size = recv(current_socket, buffer, BUF - 1, 0);
+               if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                  break;
+               buffer[size] = '\0';
+               printf("Message received in READ command: %s\n", buffer); 
+               size = strlen(buffer);
+               char username[size];
+               strcpy(username, buffer);
+               char* directory{ new char[strlen(username) + 1 + 1] };
+               directory = strcpy(directory, username);
+               directory = strcat(directory, "/");
+               cleanBuffer(buffer);
+               size = recv(current_socket, buffer, BUF - 1, 0);
+               if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                  break;
+               buffer[size] = '\0';          
+               int index = atoi(buffer);
+               printf("Number received in READ command: %d\n", index); 
+               cleanBuffer(buffer);
+               std::string entryString = "\0";
+               if(std::filesystem::exists(directory)){ //Looking for requested Directory
+                  for(const auto & entry : std::filesystem::directory_iterator(directory)){
+                     msgCount++;
+                     if(msgCount == index){
+                        entryString = entry.path();
+                        printf("File found!\n");
+                        break;
+                     }
                   }
+                  if(msgCount < index){
+                     if(send(current_socket, "ERR", 5, 0) == -1){
+                        perror("send answer failed");
+                        return NULL;
+                     }
+                  }
+                  file.open(entryString);
+                  if(file.is_open()){
+                     while(getline(file, line)){
+                        allText += line + "\n";
+                     }
+                     printf("Copying file content!\n");
+                     allText = "OK\n" + allText;
+                     int size = allText.size();
+                     char package[size+1];
+                     strcpy(package, allText.c_str()); //Send requested Message to Client
+                     if(send(current_socket, package, size, 0) == -1){
+                        perror("send answer failed");
+                        return NULL;
+                     }
+                     cleanBuffer(package);
+                  }
+                  else
+                     std::cout << "Unable to open file\n";
                }
-               if(msgCount < index){
+               else{
                   if(send(current_socket, "ERR", 5, 0) == -1){
                      perror("send answer failed");
                      return NULL;
                   }
                }
-               file.open(entryString);
-               if(file.is_open()){
-                  while(getline(file, line)){
-                     allText += line + "\n";
-                  }
-                  printf("Copying file content!\n");
-                  allText = "OK\n" + allText;
-                  int size = allText.size();
-                  char package[size+1];
-                  strcpy(package, allText.c_str()); //Send requested Message to Client
-                  if(send(current_socket, package, size, 0) == -1){
-                     perror("send answer failed");
-                     return NULL;
-                  }
-                  cleanBuffer(package);
-               }
-               else
-                  std::cout << "Unable to open file\n";
+               waiting = false;
             }
-            else{
-               if(send(current_socket, "ERR", 5, 0) == -1){
-                  perror("send answer failed");
-                  return NULL;
-               }
-            }
-            waiting = false;
          }
+         else{
+            if (send(current_socket, "Not logged in", 14, 0) == -1){
+               perror("send answer failed");
+               return NULL;
+            }
+         } 
       } //DEL Command Handling
       if(strcmp(buffer, "DEL") == 0){
-         cleanBuffer(buffer);
-         std::ifstream file;
-         std::string line = "\0";
-         std::string allText = "\0";
-         int msgCount = 0;
-         std::string msgCounterString = "\0";
-         bool waiting = true;
-         printf("Waiting for data\n");
-         while(waiting){
-            size = recv(current_socket, buffer, BUF - 1, 0);
-            if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-               break;
-            buffer[size] = '\0';
-            printf("Message received in DEL command: %s\n", buffer); 
-            size = strlen(buffer);
-            char username[size];
-            strcpy(username, buffer);
-            char* directory{ new char[strlen(username) + 1 + 1] };
-            directory = strcpy(directory, username);
-            directory = strcat(directory, "/");
+         if(verified){
             cleanBuffer(buffer);
-            size = recv(current_socket, buffer, BUF - 1, 0); 
-            if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-               break;
-            buffer[size] = '\0';  
-            int index = atoi(buffer);
-            printf("Number received in DEL command: %d\n", index); 
-            cleanBuffer(buffer);
-            std::string entryString = "\0";
-            if(std::filesystem::exists(directory)){
-               for(const auto & entry : std::filesystem::directory_iterator(directory)){
-                  msgCount++;
-                  if(msgCount == index){ //remove file if found
-                     entryString = entry.path();
-                     std::filesystem::remove(entryString); 
-                     if (send(current_socket, "OK", 3, 0) == -1){
+            std::ifstream file;
+            std::string line = "\0";
+            std::string allText = "\0";
+            int msgCount = 0;
+            std::string msgCounterString = "\0";
+            bool waiting = true;
+            printf("Waiting for data\n");
+            while(waiting){
+               size = recv(current_socket, buffer, BUF - 1, 0);
+               if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                  break;
+               buffer[size] = '\0';
+               printf("Message received in DEL command: %s\n", buffer); 
+               size = strlen(buffer);
+               char username[size];
+               strcpy(username, buffer);
+               char* directory{ new char[strlen(username) + 1 + 1] };
+               directory = strcpy(directory, username);
+               directory = strcat(directory, "/");
+               cleanBuffer(buffer);
+               size = recv(current_socket, buffer, BUF - 1, 0); 
+               if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                  break;
+               buffer[size] = '\0';  
+               int index = atoi(buffer);
+               printf("Number received in DEL command: %d\n", index); 
+               cleanBuffer(buffer);
+               std::string entryString = "\0";
+               if(std::filesystem::exists(directory)){
+                  for(const auto & entry : std::filesystem::directory_iterator(directory)){
+                     msgCount++;
+                     if(msgCount == index){ //remove file if found
+                        entryString = entry.path();
+                        std::filesystem::remove(entryString); 
+                        if (send(current_socket, "OK", 3, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                        break;
+                     }
+                  }
+                  if(msgCount < index){
+                     if(send(current_socket, "ERR", 4, 0) == -1){
                         perror("send answer failed");
                         return NULL;
                      }
-                     break;
-                  }
+                  } 
+               
                }
-               if(msgCount < index){
+               else{
                   if(send(current_socket, "ERR", 4, 0) == -1){
                      perror("send answer failed");
-                     return NULL;
+                     return 0;
                   }
-               } 
-            
-            }
-            else{
-               if(send(current_socket, "ERR", 4, 0) == -1){
-                  perror("send answer failed");
-                  return 0;
                }
+               waiting = false;
             }
-            waiting = false;
          }
+         else{
+            if (send(current_socket, "Not logged in", 14, 0) == -1){
+               perror("send answer failed");
+               return NULL;
+            }
+         } 
       }
-
     //ignore error
    } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
    cleanBuffer(buffer);

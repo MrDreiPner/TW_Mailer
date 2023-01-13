@@ -187,16 +187,11 @@ int main(int argc, char* argv[]){
             while(buffer[0] != '.'){
                switch(enterPress){
                   case 1: 
-                     std::cout << "Sender >> ";
-                     sendUser(create_socket, buffer);
-                     enterPress++;
-                     break;
-                  case 2: 
                      std::cout << "Receiver >> ";
                      sendUser(create_socket, buffer);
                      enterPress++;
                      break; 
-                  case 3: 
+                  case 2: 
                      std::cout << "Subject >> ";
                      fgets(buffer, BUF, stdin); 
                      while(strlen(buffer) > 80){
