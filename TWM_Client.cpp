@@ -8,7 +8,7 @@
 #include <string.h>
 #include <iostream>
 #include <regex>
-#include <ldap.h>
+//#include <ldap.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 

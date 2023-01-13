@@ -16,7 +16,7 @@
 #include <charconv>
 #include <array>
 #include <filesystem>
-#include <ldap.h>
+//#include <ldap.h>
 #include <vector>
 #include <pthread.h>
 //#include "TWM_Session.h"
@@ -126,10 +126,14 @@ int main(void){
          else{
             printf("Client connected from %s:%d...\n", inet_ntoa(cliaddress.sin_addr), ntohs(cliaddress.sin_port));
             pthread_t *newThread = new pthread_t();
-            if(pthread_create(newThread, NULL, clientCommunication, (void *)&new_socket) == 0)
+            if(pthread_create(newThread, NULL, clientCommunication, (void *)&new_socket) == 0){
                threads.push_back(newThread);
+               pthread_detach(*newThread);
+               
+               std::cout <<"This is Thread numba: " << pthread_self() << std::endl;
+            }
             for(int i = 0; i< (int)threads.size(); i++){
-               std::cout <<"This is Thread numba: " <<threads[i] << std::endl;
+               
             }
          }
       //}

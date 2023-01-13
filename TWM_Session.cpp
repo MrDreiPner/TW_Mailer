@@ -17,7 +17,7 @@
 #include <charconv>
 #include <array>
 #include <filesystem>
-#include <ldap.h>
+//#include <ldap.h>
 
 #define BUF 1024
 #define PORT 6543

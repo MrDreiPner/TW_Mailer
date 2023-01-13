@@ -1,4 +1,4 @@
-all: TWM_Client TWM_Server TWM_Session
+all: TWM_Client TWM_Server
 
 TWM_Client: TWM_Client.cpp
 	g++ -std=c++17 -Wall -Werror -o TWM_Client TWM_Client.cpp
