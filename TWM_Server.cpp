@@ -197,6 +197,7 @@ void *clientCommunication(void* data){
    int *current_socketPT = (int *) data;
    int current_socket = *current_socketPT;
    int failedLoginCount = 3;
+   bool verified = false;
 
    ////////////////////////////////////////////////////////////////////////////
    // SEND welcome message
@@ -216,7 +217,7 @@ void *clientCommunication(void* data){
          break;
       buffer[size] = '\0';
       printf("Message received: %s\n", buffer);
-
+      //LOGIN 
       if(strcmp(buffer, "LOGIN") == 0){
          const char *ldapUri = "ldap://ldap.technikum-wien.at:389";
          const int ldapVersion = LDAP_VERSION3;
@@ -237,7 +238,6 @@ void *clientCommunication(void* data){
          if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
             break;
          buffer[size] = '\0';
-         printf("%s", buffer);
          char ldapBindPassword[256];
          strcpy(ldapBindPassword, buffer);
          printf("pw taken over from commandline\n");
@@ -281,25 +281,24 @@ void *clientCommunication(void* data){
             NULL,
             NULL,
             &servercredp);
-         if (rc != LDAP_SUCCESS)
-         {
+         if (rc != LDAP_SUCCESS){
             fprintf(stderr, "LDAP bind error: %s\n", ldap_err2string(rc));
             failedLoginCount--;
-            std::string message = "Wrong Credentials. Remaining Attempts: " + failedLoginCount;
-            const char* msg = message.c_str();
-            //char msg[41];
-            //strncpy(msg, message.c_str(), sizeof(msg));
-            std::cout << msg << std::endl;
+            std::string message = "Wrong Credentials. Remaining Attempts: " + std::to_string(failedLoginCount);
+            char msg[41];
+            strncpy(msg, message.c_str(), sizeof(msg));
             size = strlen(msg);
             send(current_socket, msg, size, 0);
             ldap_unbind_ext_s(ldapHandle, NULL, NULL);
             continue;
          }
-         char msg[] = "Login Successful";
-         size = strlen(msg);
-         send(create_socket, msg, size, 0);
+         if (send(current_socket, "Login Successful", 17, 0) == -1){
+            perror("send answer failed");
+            return NULL;
+         }
+         verified = true;
       }
-      else if(strcmp(buffer, "SEND") == 0){       //SEND Command Handling 
+      if(strcmp(buffer, "SEND") == 0){       //SEND Command Handling 
          int state = 0;
          bool messageIncomplete = true;
          char sender[9] = "\0";

@@ -180,17 +180,6 @@ int main(int argc, char* argv[]){
             strcpy(buffer, getpass());
             size = strlen(buffer);
             send(create_socket, buffer, size, 0);
-            size = recv(create_socket, buffer, BUF - 1, 0);
-            if (size == -1){
-               perror("recv error");
-               break;
-            }
-            else if (size == 0){
-               printf("Server closed remote socket\n"); // ignore error
-               break;
-            }
-            buffer[size] = '\0';
-            std::cout << "<< " << buffer << std::endl;
          } //SEND command
          else if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
@@ -299,7 +288,7 @@ int main(int argc, char* argv[]){
          //////////////////////////////////////////////////////////////////////
          // RECEIVE FEEDBACK
          if(strcmp(tmpBuffer, "SEND") == 0 || strcmp(tmpBuffer, "LIST") == 0 || 
-            strcmp(tmpBuffer, "READ") == 0 || strcmp(tmpBuffer, "DEL") == 0){
+            strcmp(tmpBuffer, "READ") == 0 || strcmp(tmpBuffer, "DEL") == 0 || strcmp(tmpBuffer, "LOGIN") == 0){
             size = recv(create_socket, buffer, BUF - 1, 0);
             if (size == -1){
                perror("recv error");
@@ -313,7 +302,7 @@ int main(int argc, char* argv[]){
             std::cout << "<< " << buffer << std::endl;
          }
          else if(strcmp(tmpBuffer, "QUIT") != 0){
-            std::cout << "Unkown command" << std::endl;
+            std::cout << "Unknown command" << std::endl;
          }
       }
    } while (!isQuit);
