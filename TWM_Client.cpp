@@ -106,7 +106,7 @@ int main(int argc, char* argv[]){
    bool loggedIn = false;
    int size;
    int isQuit;
-      if(argc < 3){
+   if(argc < 3){
       perror("Too few arguments");
       return EXIT_FAILURE;
    }
@@ -189,13 +189,13 @@ int main(int argc, char* argv[]){
             strcpy(buffer, getpass());
             size = strlen(buffer);
             send(create_socket, buffer, size, 0);
-            size = recv(create_socket, buffer, BUF - 1, 0);
-            recvErrorMsgHandling(size);
-            buffer[size] = '\0';
-            if(strcmp(buffer, "OK") == 0){
-               loggedIn = true;
-            }
-            std::cout << "<< " << buffer << std::endl;
+            //size = recv(create_socket, buffer, BUF - 1, 0);
+            //recvErrorMsgHandling(size);
+            //buffer[size] = '\0';
+            //if(strcmp(buffer, "OK") == 0){
+            //   loggedIn = true;
+            //}
+            //std::cout << "<< " << buffer << std::endl;
          } //SEND command
          else if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
@@ -313,7 +313,15 @@ int main(int argc, char* argv[]){
             buffer[size] = '\0';
             std::cout << "<< " << buffer << std::endl;
          }
-         else if(strcmp(tmpBuffer, "QUIT") != 0 && loggedIn){
+         else if(strcmp(tmpBuffer, "LOGIN") == 0){
+            size = recv(create_socket, buffer, BUF - 1, 0);
+            recvErrorMsgHandling(size);
+            buffer[size] = '\0';
+            std::cout << "<< " << buffer << std::endl;
+            if(strcmp(buffer, "OK") == 0)
+               loggedIn = true;
+         }
+         else if(strcmp(tmpBuffer, "QUIT") != 0){
             std::cout << "Unknown command" << std::endl;
          }
       }
