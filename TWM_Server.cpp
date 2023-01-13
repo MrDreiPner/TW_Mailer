@@ -19,7 +19,7 @@
 #include <ldap.h>
 #include <vector>
 #include <pthread.h>
-#include <termios.h>
+
 //#include "TWM_Session.h"
 
 
@@ -39,8 +39,6 @@ std::vector<pthread_t*> threads;
 
 void signalHandler(int sig);
 void *clientCommunication(void *data);
-const char *getpass();
-int getch();
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -198,6 +196,7 @@ void *clientCommunication(void* data){
    int size;
    int *current_socketPT = (int *) data;
    int current_socket = *current_socketPT;
+   int failedLoginCount = 3;
 
    ////////////////////////////////////////////////////////////////////////////
    // SEND welcome message
@@ -218,58 +217,89 @@ void *clientCommunication(void* data){
       buffer[size] = '\0';
       printf("Message received: %s\n", buffer);
 
-      /*if(strcmp(buffer, "LOGIN") == 0){
+      if(strcmp(buffer, "LOGIN") == 0){
          const char *ldapUri = "ldap://ldap.technikum-wien.at:389";
          const int ldapVersion = LDAP_VERSION3;
-
-         // read username (bash: export ldapuser=<yourUsername>)
+         //receive username
+         cleanBuffer(buffer);
+         size = recv(current_socket, buffer, BUF - 1, 0);
+         if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+            break;
+         buffer[size] = '\0';
+         char username[200];
          char ldapBindUser[256];
-         char rawLdapUser[128];
-         if (argc >= 3 && strcmp(argv[1], "--user") == 0)
-         {
-            strcpy(rawLdapUser, argv[2]);
-            sprintf(ldapBindUser, "uid=%s,ou=people,dc=technikum-wien,dc=at", rawLdapUser);
-            printf("user set to: %s\n", ldapBindUser);
-         }
-         else
-         {
-            const char *rawLdapUserEnv = getenv("ldapuser");
-            if (rawLdapUserEnv == NULL)
-            {
-               printf("(user not found... set to empty string)\n");
-               strcpy(ldapBindUser, "");
-            }
-            else
-            {
-               sprintf(ldapBindUser, "uid=%s,ou=people,dc=technikum-wien,dc=at", rawLdapUserEnv);
-               printf("user based on environment variable ldapuser set to: %s\n", ldapBindUser);
-            }
-         }
-
-         // read password (bash: export ldappw=<yourPW>)
+         strcpy(username, buffer);
+         sprintf(ldapBindUser, "uid=%s,ou=people,dc=technikum-wien,dc=at", username);
+         printf("user set to: %s\n", ldapBindUser);
+         //receive password
+         cleanBuffer(buffer);
+         size = recv(current_socket, buffer, BUF - 1, 0);
+         if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+            break;
+         buffer[size] = '\0';
+         printf("%s", buffer);
          char ldapBindPassword[256];
-         if (argc == 4 && strcmp(argv[3], "--pw") == 0)
-         {
-            strcpy(ldapBindPassword, getpass());
-            printf("pw taken over from commandline\n");
+         strcpy(ldapBindPassword, buffer);
+         printf("pw taken over from commandline\n");
+         // setup LDAP connection
+         LDAP *ldapHandle;
+         int rc = ldap_initialize(&ldapHandle, ldapUri);
+         if (rc != LDAP_SUCCESS){
+            fprintf(stderr, "ldap_init failed\n");
+            continue;
          }
-         else
-         {
-            const char *ldapBindPasswordEnv = getenv("ldappw");
-            if (ldapBindPasswordEnv == NULL)
-            {
-               strcpy(ldapBindPassword, "");
-               printf("(pw not found... set to empty string)\n");
-            }
-            else
-            {
-               strcpy(ldapBindPassword, ldapBindPasswordEnv);
-               printf("pw taken over from environment variable ldappw\n");
-            }
+         printf("connected to LDAP server %s\n", ldapUri);
+         rc = ldap_set_option(
+            ldapHandle,
+            LDAP_OPT_PROTOCOL_VERSION, // OPTION
+            &ldapVersion);             // IN-Value
+         if (rc != LDAP_OPT_SUCCESS){
+            fprintf(stderr, "ldap_set_option(PROTOCOL_VERSION): %s\n", ldap_err2string(rc));
+            ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+            continue;
          }
-
+         //start secure connection
+         rc = ldap_start_tls_s(
+         ldapHandle,
+         NULL,
+         NULL);
+         if (rc != LDAP_SUCCESS){
+            fprintf(stderr, "ldap_start_tls_s(): %s\n", ldap_err2string(rc));
+            ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+            continue;
+         }
+         //bind credentials
+         BerValue bindCredentials;
+         bindCredentials.bv_val = (char *)ldapBindPassword;
+         bindCredentials.bv_len = strlen(ldapBindPassword);
+         BerValue *servercredp; // server's credentials
+         rc = ldap_sasl_bind_s(
+            ldapHandle,
+            ldapBindUser,
+            LDAP_SASL_SIMPLE,
+            &bindCredentials,
+            NULL,
+            NULL,
+            &servercredp);
+         if (rc != LDAP_SUCCESS)
+         {
+            fprintf(stderr, "LDAP bind error: %s\n", ldap_err2string(rc));
+            failedLoginCount--;
+            std::string message = "Wrong Credentials. Remaining Attempts: " + failedLoginCount;
+            const char* msg = message.c_str();
+            //char msg[41];
+            //strncpy(msg, message.c_str(), sizeof(msg));
+            std::cout << msg << std::endl;
+            size = strlen(msg);
+            send(current_socket, msg, size, 0);
+            ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+            continue;
+         }
+         char msg[] = "Login Successful";
+         size = strlen(msg);
+         send(create_socket, msg, size, 0);
       }
-      else*/ if(strcmp(buffer, "SEND") == 0){       //SEND Command Handling 
+      else if(strcmp(buffer, "SEND") == 0){       //SEND Command Handling 
          int state = 0;
          bool messageIncomplete = true;
          char sender[9] = "\0";

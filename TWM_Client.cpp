@@ -9,6 +9,7 @@
 #include <iostream>
 #include <regex>
 //#include <ldap.h>
+#include <termios.h>
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -48,6 +49,47 @@ void sendUser(int create_socket, char* buffer){
    //buffer[size] = '\0';
    send(create_socket, buffer, size, 0);
 }
+
+
+int getch(){
+   int ch;
+   struct termios t_old, t_new;
+   tcgetattr(STDIN_FILENO, &t_old);
+   t_new = t_old;
+   t_new.c_lflag &= ~(ICANON | ECHO);
+   tcsetattr(STDIN_FILENO, TCSANOW, &t_new);
+   ch = getchar();
+   tcsetattr(STDIN_FILENO, TCSANOW, &t_old);
+   return ch;
+}
+
+const char *getpass(){
+   int show_asterisk = 0;
+   const char BACKSPACE = 127;
+   const char RETURN = 10;
+   unsigned char ch = 0;
+   std::string password;
+   printf("Password >> ");
+   while ((ch = getch()) != RETURN){
+      if (ch == BACKSPACE){
+         if (password.length() != 0){
+            if (show_asterisk){
+               printf("\b \b"); // backslash: \b
+            }
+            password.resize(password.length() - 1);
+         }
+      }
+      else{
+         password += ch;
+         if (show_asterisk){
+            printf("*");
+         }
+      }
+   }
+   printf("\n");
+   return password.c_str();
+}
+
 
 int main(int argc, char* argv[]){
    int create_socket;
@@ -128,19 +170,28 @@ int main(int argc, char* argv[]){
          // SENDING DATA
          // send will fail if connection is closed, but does not set
          // the error of send, but still the count of bytes sent
-         if(strcmp(buffer, "LOGIN") == 0){
+         if(strcmp(buffer, "LOGIN") == 0){ //LOGIN command
             send(create_socket, buffer, size, 0);
             printf("LDAP Username >> ");
             fgets(buffer, BUF, stdin);
             size = strlen(buffer);
             buffer[size-1] = '\0';
             send(create_socket, buffer, size, 0);
-            printf("Password >> ");
-            fgets(buffer, BUF, stdin);
+            strcpy(buffer, getpass());
             size = strlen(buffer);
-            buffer[size-1] = '\0';
             send(create_socket, buffer, size, 0);
-         }
+            size = recv(create_socket, buffer, BUF - 1, 0);
+            if (size == -1){
+               perror("recv error");
+               break;
+            }
+            else if (size == 0){
+               printf("Server closed remote socket\n"); // ignore error
+               break;
+            }
+            buffer[size] = '\0';
+            std::cout << "<< " << buffer << std::endl;
+         } //SEND command
          else if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
             int enterPress = 1;
@@ -281,4 +332,5 @@ int main(int argc, char* argv[]){
    }
    return EXIT_SUCCESS;
 }
+
 
