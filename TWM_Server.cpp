@@ -16,16 +16,17 @@
 #include <charconv>
 #include <array>
 #include <filesystem>
-//#include <ldap.h>
+#include <ldap.h>
 #include <vector>
 #include <pthread.h>
+#include <termios.h>
 //#include "TWM_Session.h"
 
 
 ///////////////////////////////////////////////////////////////////////////////
 
 #define BUF 1024
-#define PORT 6543
+//#define PORT 6543
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -38,6 +39,8 @@ std::vector<pthread_t*> threads;
 
 void signalHandler(int sig);
 void *clientCommunication(void *data);
+const char *getpass();
+int getch();
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -45,7 +48,13 @@ int main(int argc , char *argv[]){
    socklen_t addrlen;
    struct sockaddr_in address, cliaddress;
    int reuseValue = 1;
-
+   if(argc < 3){
+      perror("Too few arguments");
+      return EXIT_FAILURE;
+   }
+   int PORT = std::strtol(argv[1], nullptr, 10);
+   char* fileLocation = argv[2];
+   std::cout << "passed PORT:" << PORT << "\nFile location = " << fileLocation << std::endl;
    ////////////////////////////////////////////////////////////////////////////
    // SIGNAL HANDLER
    if (signal(SIGINT, signalHandler) == SIG_ERR){

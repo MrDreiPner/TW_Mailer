@@ -13,7 +13,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #define BUF 1024
-#define PORT 6543
+//#define PORT 1234
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -49,12 +49,20 @@ void sendUser(int create_socket, char* buffer){
    send(create_socket, buffer, size, 0);
 }
 
-int main(int argc, char **argv){
+int main(int argc, char* argv[]){
    int create_socket;
    char buffer[BUF];
    struct sockaddr_in address;
    int size;
    int isQuit;
+      if(argc < 3){
+      perror("Too few arguments");
+      return EXIT_FAILURE;
+   }
+   int PORT = std::strtol(argv[2], nullptr, 10);
+   char* recIP = argv[1];
+   std::cout << "passed PORT:" << PORT << "\npassed IP = " << recIP << std::endl;
+
    ////////////////////////////////////////////////////////////////////////////
    // CREATE A SOCKET
    if ((create_socket = socket(AF_INET, SOCK_STREAM, 0)) == -1){
@@ -67,7 +75,7 @@ int main(int argc, char **argv){
    address.sin_family = AF_INET;         // IPv4
    address.sin_port = htons(PORT);
    if (argc < 2){
-      inet_aton("127.0.0.1", &address.sin_addr);
+      inet_aton(recIP, &address.sin_addr);
    }
    else{
       inet_aton(argv[1], &address.sin_addr);
@@ -229,7 +237,6 @@ int main(int argc, char **argv){
             send(create_socket, buffer, size, 0);
          }
          else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
-            send(create_socket, buffer, size, 0);
             for(int i = 0; i < 2; i++){
                i == 0 ? printf("Username >> ") : printf("Number >> ");
                fgets(buffer, BUF, stdin);
@@ -243,8 +250,6 @@ int main(int argc, char **argv){
          if(strcmp(tmpBuffer, "SEND") == 0 || strcmp(tmpBuffer, "LIST") == 0 || 
             strcmp(tmpBuffer, "READ") == 0 || strcmp(tmpBuffer, "DEL") == 0){
             size = recv(create_socket, buffer, BUF - 1, 0);
-            buffer[size] = '\0';
-            std::cout << "<< " << buffer << std::endl;
             if (size == -1){
                perror("recv error");
                break;
@@ -253,6 +258,8 @@ int main(int argc, char **argv){
                printf("Server closed remote socket\n"); // ignore error
                break;
             }
+            buffer[size] = '\0';
+            std::cout << "<< " << buffer << std::endl;
          }
          else if(strcmp(tmpBuffer, "QUIT") != 0){
             std::cout << "Unkown command" << std::endl;
