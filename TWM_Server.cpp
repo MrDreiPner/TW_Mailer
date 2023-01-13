@@ -41,7 +41,7 @@ void *clientCommunication(void *data);
 
 ///////////////////////////////////////////////////////////////////////////////
 
-int main(void){
+int main(int argc , char *argv[]){
    socklen_t addrlen;
    struct sockaddr_in address, cliaddress;
    int reuseValue = 1;
@@ -130,11 +130,9 @@ int main(void){
                threads.push_back(newThread);
                pthread_detach(*newThread);
                
-               std::cout <<"This is Thread numba: " << pthread_self() << std::endl;
+               std::cout <<"Server is thread numba: " << pthread_self() << std::endl;
             }
-            for(int i = 0; i< (int)threads.size(); i++){
-               
-            }
+            //shutdown(new_socket, SHUT_RDWR);
          }
       //}
 
@@ -186,15 +184,17 @@ void cleanBuffer (char* buffer){
    }
 }
 
-void *clientCommunication(void *data){
+void *clientCommunication(void* data){
    char buffer[BUF];
    int size;
-   int *current_socket = (int *)data;
+   int *current_socketPT = (int *) data;
+   int current_socket = *current_socketPT;
 
    ////////////////////////////////////////////////////////////////////////////
    // SEND welcome message
+   std::cout <<"This is thread numba: " << pthread_self() << std::endl;
    strcpy(buffer, "Welcome to myserver!\r\nPlease enter your commands...\r\n");
-   if (send(*current_socket, buffer, strlen(buffer), 0) == -1){
+   if (send(current_socket, buffer, strlen(buffer), 0) == -1){
       perror("send failed");
       return NULL;
    }
@@ -203,12 +203,12 @@ void *clientCommunication(void *data){
       /////////////////////////////////////////////////////////////////////////
       // RECEIVE
       cleanBuffer(buffer);
-      size = recv(*current_socket, buffer, BUF - 1, 0);
+      size = recv(current_socket, buffer, BUF - 1, 0);
       if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
          break;
       buffer[size] = '\0';
       printf("Message received: %s\n", buffer);
-      //SEND Command Handling 
+
       /*if(strcmp(buffer, "LOGIN") == 0){
          const char *ldapUri = "ldap://ldap.technikum-wien.at:389";
          const int ldapVersion = LDAP_VERSION3;
@@ -260,7 +260,7 @@ void *clientCommunication(void *data){
          }
 
       }
-      else*/ if(strcmp(buffer, "SEND") == 0){
+      else*/ if(strcmp(buffer, "SEND") == 0){       //SEND Command Handling 
          int state = 0;
          bool messageIncomplete = true;
          char sender[9] = "\0";
@@ -270,7 +270,7 @@ void *clientCommunication(void *data){
          printf("Waiting for data\n");
          while(messageIncomplete){
             cleanBuffer(buffer);
-            size = recv(*current_socket, buffer, BUF - 1, 0);
+            size = recv(current_socket, buffer, BUF - 1, 0);
             if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
                break;
             buffer[size] = '\0';
@@ -370,7 +370,7 @@ void *clientCommunication(void *data){
                file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: \n" << message << std::endl;
                file.close();
                messageIncomplete = false;
-               if (send(*current_socket, "OK", 3, 0) == -1){
+               if (send(current_socket, "OK", 3, 0) == -1){
                   perror("send answer failed");
                   return NULL;
                }
@@ -387,7 +387,7 @@ void *clientCommunication(void *data){
          bool waiting = true;
          printf("Waiting for data\n");
          while(waiting){
-            size = recv(*current_socket, buffer, BUF - 1, 0);
+            size = recv(current_socket, buffer, BUF - 1, 0);
             if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
                break;
             buffer[size] = '\0';
@@ -411,14 +411,14 @@ void *clientCommunication(void *data){
                   int size = allSubjects.size();
                   char package[size+1];
                   strcpy(package, allSubjects.c_str());
-                  if(send(*current_socket, package, size, 0) == -1){
+                  if(send(current_socket, package, size, 0) == -1){
                      perror("send answer failed");
                      return NULL;
                   }
                   cleanBuffer(package);
                }
                else{ //No List to be sent
-                  if(send(*current_socket, "0", 2, 0) == -1){
+                  if(send(current_socket, "0", 2, 0) == -1){
                      perror("send answer failed");
                      return NULL;
                   }
@@ -426,7 +426,7 @@ void *clientCommunication(void *data){
                waiting = false;
             }
             else{ //No List to be sent
-               if(send(*current_socket, "0", 2, 0) == -1){
+               if(send(current_socket, "0", 2, 0) == -1){
                   perror("send answer failed");
                   return NULL;
                }
@@ -444,7 +444,7 @@ void *clientCommunication(void *data){
          bool waiting = true;
          printf("Waiting for data\n");
          while(waiting){
-            size = recv(*current_socket, buffer, BUF - 1, 0);
+            size = recv(current_socket, buffer, BUF - 1, 0);
             if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
                break;
             buffer[size] = '\0';
@@ -456,7 +456,7 @@ void *clientCommunication(void *data){
             directory = strcpy(directory, username);
             directory = strcat(directory, "/");
             cleanBuffer(buffer);
-            size = recv(*current_socket, buffer, BUF - 1, 0);
+            size = recv(current_socket, buffer, BUF - 1, 0);
             if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
                break;
             buffer[size] = '\0';          
@@ -474,7 +474,7 @@ void *clientCommunication(void *data){
                   }
                }
                if(msgCount < index){
-                  if(send(*current_socket, "ERR", 5, 0) == -1){
+                  if(send(current_socket, "ERR", 5, 0) == -1){
                      perror("send answer failed");
                      return NULL;
                   }
@@ -489,7 +489,7 @@ void *clientCommunication(void *data){
                   int size = allText.size();
                   char package[size+1];
                   strcpy(package, allText.c_str()); //Send requested Message to Client
-                  if(send(*current_socket, package, size, 0) == -1){
+                  if(send(current_socket, package, size, 0) == -1){
                      perror("send answer failed");
                      return NULL;
                   }
@@ -499,7 +499,7 @@ void *clientCommunication(void *data){
                   std::cout << "Unable to open file\n";
             }
             else{
-               if(send(*current_socket, "ERR", 5, 0) == -1){
+               if(send(current_socket, "ERR", 5, 0) == -1){
                   perror("send answer failed");
                   return NULL;
                }
@@ -517,7 +517,7 @@ void *clientCommunication(void *data){
          bool waiting = true;
          printf("Waiting for data\n");
          while(waiting){
-            size = recv(*current_socket, buffer, BUF - 1, 0);
+            size = recv(current_socket, buffer, BUF - 1, 0);
             if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
                break;
             buffer[size] = '\0';
@@ -529,7 +529,7 @@ void *clientCommunication(void *data){
             directory = strcpy(directory, username);
             directory = strcat(directory, "/");
             cleanBuffer(buffer);
-            size = recv(*current_socket, buffer, BUF - 1, 0); 
+            size = recv(current_socket, buffer, BUF - 1, 0); 
             if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
                break;
             buffer[size] = '\0';  
@@ -543,7 +543,7 @@ void *clientCommunication(void *data){
                   if(msgCount == index){ //remove file if found
                      entryString = entry.path();
                      std::filesystem::remove(entryString); 
-                     if (send(*current_socket, "OK", 3, 0) == -1){
+                     if (send(current_socket, "OK", 3, 0) == -1){
                         perror("send answer failed");
                         return NULL;
                      }
@@ -551,7 +551,7 @@ void *clientCommunication(void *data){
                   }
                }
                if(msgCount < index){
-                  if(send(*current_socket, "ERR", 4, 0) == -1){
+                  if(send(current_socket, "ERR", 4, 0) == -1){
                      perror("send answer failed");
                      return NULL;
                   }
@@ -559,7 +559,7 @@ void *clientCommunication(void *data){
             
             }
             else{
-               if(send(*current_socket, "ERR", 4, 0) == -1){
+               if(send(current_socket, "ERR", 4, 0) == -1){
                   perror("send answer failed");
                   return 0;
                }
@@ -572,12 +572,12 @@ void *clientCommunication(void *data){
    } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
    cleanBuffer(buffer);
    // closes/frees the descriptor if not already
-   if(*current_socket != -1){
-      if(shutdown(*current_socket, SHUT_RDWR) == -1)
+   if(current_socket != -1){
+      if(shutdown(current_socket, SHUT_RDWR) == -1)
          perror("shutdown new_socket");
-      if(close(*current_socket) == -1)
+      if(close(current_socket) == -1)
          perror("close new_socket");
-      *current_socket = -1;
+      current_socket = -1;
    }
    return NULL;
 }
