@@ -43,6 +43,7 @@ void *clientCommunication(void *data);
 struct arg_struct{
    int socket;
    char *dataStore;
+   struct sockaddr_in* pV4Addr;
 }typedef arg_struct;
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -138,6 +139,7 @@ int main(int argc , char *argv[]){
          }
          else{
             printf("Client connected from %s:%d...\n", inet_ntoa(cliaddress.sin_addr), ntohs(cliaddress.sin_port));
+            args.pV4Addr = (struct sockaddr_in*)&cliaddress;
             args.socket = new_socket;
             pthread_t *newThread = new pthread_t();
             if(pthread_create(newThread, NULL, clientCommunication, (void *)&args) == 0){
@@ -207,11 +209,15 @@ void *clientCommunication(void* data){
    arg_struct *args = (arg_struct *) data;
    int current_socket = args->socket;
    char* storageLocation = args->dataStore;
+   struct in_addr ipAddr = args->pV4Addr->sin_addr;
+   char clientIPstr[INET_ADDRSTRLEN];
+   inet_ntop( AF_INET, &ipAddr, clientIPstr, INET_ADDRSTRLEN );
+   std::cout <<"This is thread numba: " << pthread_self() << std::endl;
+   std::cout <<"passed storage location = " << storageLocation << std::endl;
+   std::cout <<"passed clientIPadress = " << clientIPstr << std::endl;
 
    ////////////////////////////////////////////////////////////////////////////
    // SEND welcome message
-   std::cout <<"This is thread numba: " << pthread_self() << std::endl;
-   std::cout <<"passed storage location = " << storageLocation << std::endl;
    strcpy(buffer, "Welcome to myserver!\r\nPlease enter your commands...\r\n");
    if (send(current_socket, buffer, strlen(buffer), 0) == -1){
       perror("send failed");
@@ -399,18 +405,33 @@ void *clientCommunication(void* data){
                if(state > 2){
                   printf("SEND message completed\n");
                   std::ofstream file;
-                  size = strlen(receiver);
-                  char path[size];
-                  strcpy(path,receiver);
+                  mkdir(storageLocation,0777);
+                  char* path{ new char[strlen(storageLocation) + 1 + strlen(sender)] };
+                  path = strcpy(path, storageLocation);
+                  path = strcat(path, "/");
+                  path = strcat(path, sender);
                   mkdir(path,0777);
+                  char* subPath{ new char[strlen(path) + 1 + strlen(receiver)] };
+                  subPath = strcpy(subPath, path);
+                  subPath = strcat(subPath, "/");
+                  subPath = strcat(subPath, receiver);
+                  mkdir(subPath,0777);
                   const char* txt =".txt\0";
-                  char* filename{ new char[strlen(path) + 1 + strlen(subject) + strlen(txt) + 1] };
-                  filename = strcpy(filename, path);
+                  char* filename{ new char[strlen(subPath) + 1 + strlen(subject) + strlen(txt) + 1] };
+                  filename = strcpy(filename, subPath);
                   filename = strcat(filename, "/");
                   filename = strcat(filename, subject);
                   filename = strcat(filename, txt);
                   printf("Composed filename: %s\n", filename); 
                   file.open(filename, std::ios_base::app);
+                  /*int numerator = 0;
+                  while(file){
+                     file.close();
+                     numerator++;
+                     std::string numStr = std::to_string(numerator);
+                     char* newFileName = { new char[strlen(subPath) + 1 + strlen(subject) + strlen(numStr.c_str()) + strlen(txt) + 1] };
+                     file.open(newFileName, std::ios_base::app);
+                  }*/
                   file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: \n" << message << std::endl;
                   file.close();
                   messageIncomplete = false;
