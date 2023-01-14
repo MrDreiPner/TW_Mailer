@@ -19,6 +19,7 @@
 #include <ldap.h>
 #include <vector>
 #include <pthread.h>
+#include <dirent.h>
 
 //#include "TWM_Session.h"
 
@@ -26,14 +27,12 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #define BUF 1024
-//#define PORT 6543
 
 ///////////////////////////////////////////////////////////////////////////////
 
 int abortRequested = 0;
 int create_socket = -1;
 int new_socket = -1;
-std::vector<pthread_t*> threads;
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -143,7 +142,6 @@ int main(int argc , char *argv[]){
             args.socket = new_socket;
             pthread_t *newThread = new pthread_t();
             if(pthread_create(newThread, NULL, clientCommunication, (void *)&args) == 0){
-               threads.push_back(newThread);
                pthread_detach(*newThread);
                
                std::cout <<"Server is thread numba: " << pthread_self() << std::endl;
@@ -151,26 +149,7 @@ int main(int argc , char *argv[]){
             //shutdown(new_socket, SHUT_RDWR);
          }
       //}
-
-
-      /////////////////////////////////////////////////////////////////////////
-      // START CLIENT
-      // ignore printf error handling
-      // printf("Client connected from %s:%d...\n",
-      //        inet_ntoa(cliaddress.sin_addr),
-      //        ntohs(cliaddress.sin_port));
-      // clientCommunication(&new_socket); // returnValue can be ignored
-      // new_socket = -1;
    }
-
-   // frees the descriptor
-   // if (create_socket != -1){
-   //    if (shutdown(create_socket, SHUT_RDWR) == -1)
-   //       perror("shutdown create_socket");
-   //    if (close(create_socket) == -1)
-   //       perror("close create_socket");
-   //    create_socket = -1;
-   // }
    return EXIT_SUCCESS;
 }
 
@@ -470,46 +449,106 @@ void *clientCommunication(void* data){
                   break;
                buffer[size] = '\0';
                printf("Message received in LIST command: %s\n", buffer); 
-               char* directory{ new char[strlen(buffer) + 1 + 1] };
-               directory = strcpy(directory, buffer);
-               directory = strcat(directory, "/");
-               cleanBuffer(buffer);
-               if(std::filesystem::exists(directory)){ //Looking for requested Directory
-                  for(const auto & entry : std::filesystem::directory_iterator(directory)){
-                     msgCount++;
-                     msgCounterString = std::to_string(msgCount);
-                     std::string entryString = entry.path();
-                     entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
-                     std::cout << msgCount << ": " << entryString + "\n";
-                     allSubjects += msgCounterString + ":" + entryString;
-                  }
-                  if(msgCount > 0){ //Send List to Client
-                     msgCounterString = std::to_string(msgCount);
-                     allSubjects = "Message count: " + msgCounterString + "\n" + allSubjects;
-                     int size = allSubjects.size();
-                     char package[size+1];
-                     strcpy(package, allSubjects.c_str());
-                     if(send(current_socket, package, size, 0) == -1){
-                        perror("send answer failed");
-                        return NULL;
+               if(strcmp(buffer, "OUT") == 0){
+                  char* directory{ new char[strlen(storageLocation) + 1 + strlen(username) + 1 + 1] };
+                  directory = strcpy(directory, storageLocation);
+                  directory = strcat(directory, "/");
+                  directory = strcat(directory, username);
+                  directory = strcat(directory, "/");
+                  printf("Composed directory: %s\n", directory);
+                  if(std::filesystem::exists(directory)){ //Looking for requested Directory
+                     struct dirent *dir;
+                     //struct stat check;
+                     DIR *openDIR = opendir(directory);
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                        std::string receiver = dir->d_name;
+                        std::string type = directory + receiver;
+                        printf("Next Composed directory: %s\n", type.c_str());
+                        if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
+                           && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
+                              for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                                 msgCount++;
+                                 msgCounterString = std::to_string(msgCount);
+                                 std::string entryString = entry.path();
+                                 entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
+                                 std::cout << msgCount << ": Receiver: " << receiver << " | Subject: " << entryString + "\n";
+                                 allSubjects += msgCounterString + ": Receiver: " + receiver + " | Subject: " + entryString + "\n";
+                                 //printf("Msg count: %d\n", msgCount);
+                              }
+                        }
+                        //if(stat(type.c_str(), &check)){
+                           //if(check.st_mode & S_IFDIR){
+                           //}
+                        //}
                      }
-                     cleanBuffer(package);
+                     if(msgCount > 0){ //Send List to Client
+                        msgCounterString = std::to_string(msgCount);
+                        allSubjects = "Message count: " + msgCounterString + "\n" + allSubjects;
+                        int size = allSubjects.size();
+                        char package[size+1];
+                        strcpy(package, allSubjects.c_str());
+                        printf("Messages: %s\n", package);
+                        if(send(current_socket, package, size, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                        cleanBuffer(package);
+                        waiting = false;
+                     }
+                     else{ //No List to be sent
+                        if(send(current_socket, "0", 2, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                        waiting = false;
+                     }
+                     /*for(const auto & entry : std::filesystem::directory_iterator(directory)){
+                        msgCount++;
+                        msgCounterString = std::to_string(msgCount);
+                        std::string entryString = entry.path();
+                        entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
+                        std::cout << msgCount << ": " << entryString + "\n";
+                        allSubjects += msgCounterString + ":" + entryString;
+                     }
+                     if(msgCount > 0){ //Send List to Client
+                        msgCounterString = std::to_string(msgCount);
+                        allSubjects = "Message count: " + msgCounterString + "\n" + allSubjects;
+                        int size = allSubjects.size();
+                        char package[size+1];
+                        strcpy(package, allSubjects.c_str());
+                        if(send(current_socket, package, size, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                        cleanBuffer(package);
+                     }
+                     else{ //No List to be sent
+                        if(send(current_socket, "0", 2, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                     }
+                     waiting = false;*/
                   }
                   else{ //No List to be sent
                      if(send(current_socket, "0", 2, 0) == -1){
                         perror("send answer failed");
                         return NULL;
                      }
+                     waiting = false;
                   }
-                  waiting = false;
                }
-               else{ //No List to be sent
-                  if(send(current_socket, "0", 2, 0) == -1){
+               else if(strcmp(buffer, "IN") == 0){
+                  //implement myFind to look for all messages that are adressed at username
+               }
+               else{
+                  if(send(current_socket, "ERR", 4, 0) == -1){
                      perror("send answer failed");
                      return NULL;
                   }
-                  waiting = false;
                }
+               //char* directory{ new char[strlen(buffer) + 1 + 1] };
+               cleanBuffer(buffer);
             }  
          }
          else{

@@ -14,7 +14,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #define BUF 1024
-//#define PORT 1234
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -261,7 +260,7 @@ int main(int argc, char* argv[]){
          }
          else if(strcmp(buffer, "LIST") == 0){
             send(create_socket, buffer, size, 0);
-            printf("Username >> ");
+            printf("OUT or IN >> ");
             fgets(buffer, BUF, stdin);
             size = strlen(buffer);
             buffer[size-1] = '\0';
