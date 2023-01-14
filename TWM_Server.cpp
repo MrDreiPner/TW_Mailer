@@ -423,15 +423,19 @@ void *clientCommunication(void* data){
                   filename = strcat(filename, subject);
                   filename = strcat(filename, txt);
                   printf("Composed filename: %s\n", filename); 
-                  file.open(filename, std::ios_base::app);
-                  /*int numerator = 0;
-                  while(file){
-                     file.close();
+                  struct stat buffer;
+                  int numerator = 0;
+                  while(stat (filename, &buffer) == 0){
                      numerator++;
                      std::string numStr = std::to_string(numerator);
-                     char* newFileName = { new char[strlen(subPath) + 1 + strlen(subject) + strlen(numStr.c_str()) + strlen(txt) + 1] };
-                     file.open(newFileName, std::ios_base::app);
-                  }*/
+                     filename = strcpy(filename, subPath);
+                     filename = strcat(filename, "/");
+                     filename = strcat(filename, subject);
+                     filename = strcat(filename, numStr.c_str());
+                     filename = strcat(filename, txt);
+                     printf("Alternate Composed filename: %s\n", filename);
+                  }
+                  file.open(filename, std::ios_base::app);
                   file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: \n" << message << std::endl;
                   file.close();
                   messageIncomplete = false;
