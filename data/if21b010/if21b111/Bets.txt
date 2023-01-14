@@ -1,6 +1,0 @@
-Sender: if21b010
-Receiver: if21b111
-Subject: Bets
-Message: 
-Are off my guy
-

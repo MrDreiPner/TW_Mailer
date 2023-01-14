@@ -160,21 +160,11 @@ int main(int argc, char* argv[]){
             size = strlen(buffer);
             buffer[size-1] = '\0';
             send(create_socket, buffer, size, 0);
-            //size = recv(create_socket, buffer, BUF - 1, 0);
-            //recvErrorMsgHandling(size);
-            //buffer[size] = '\0';
-            //if(strcmp(buffer, "OK") == 0){
-            //   loggedIn = true;
-            //}
-            //std::cout << "<< " << buffer << std::endl;
          } //SEND command
          else if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
             if(loggedIn == false){
-               size = recv(create_socket, buffer, BUF - 1, 0);
-               recvErrorMsgHandling(size);
-               buffer[size] = '\0';
-               std::cout << "<< " << buffer << std::endl;
+               //skip to receive block
             }
             else{
                int enterPress = 1;
@@ -260,25 +250,36 @@ int main(int argc, char* argv[]){
          }
          else if(strcmp(buffer, "LIST") == 0){
             send(create_socket, buffer, size, 0);
-            printf("OUT or IN >> ");
-            fgets(buffer, BUF, stdin);
-            size = strlen(buffer);
-            buffer[size-1] = '\0';
-            send(create_socket, buffer, size, 0);
-         }
-         else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
-            for(int i = 0; i < 2; i++){
-               i == 0 ? printf("Username >> ") : printf("Number >> ");
+            if(loggedIn == false){
+               //skip to receive block
+            }
+            else{
+               printf("OUT or IN >> ");
                fgets(buffer, BUF, stdin);
                size = strlen(buffer);
                buffer[size-1] = '\0';
                send(create_socket, buffer, size, 0);
             }
          }
+         else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
+            send(create_socket, buffer, size, 0);
+            if(loggedIn == false){
+               //skip to receive block
+            }
+            else{
+               for(int i = 0; i < 2; i++){
+                  i == 0 ? printf("OUT or IN >> ") : printf("Number >> ");
+                  fgets(buffer, BUF, stdin);
+                  size = strlen(buffer);
+                  buffer[size-1] = '\0';
+                  send(create_socket, buffer, size, 0);
+               }
+            }
+         }
          //////////////////////////////////////////////////////////////////////
          // RECEIVE FEEDBACK
          if((strcmp(tmpBuffer, "SEND") == 0 || strcmp(tmpBuffer, "LIST") == 0 || 
-            strcmp(tmpBuffer, "READ") == 0 || strcmp(tmpBuffer, "DEL") == 0 ) && loggedIn){
+            strcmp(tmpBuffer, "READ") == 0 || strcmp(tmpBuffer, "DEL") == 0 )){
             size = recv(create_socket, buffer, BUF - 1, 0);
             recvErrorMsgHandling(size);
             buffer[size] = '\0';
@@ -292,7 +293,7 @@ int main(int argc, char* argv[]){
             if(strcmp(buffer, "OK") == 0)
                loggedIn = true;
          }
-         else if(strcmp(tmpBuffer, "QUIT") != 0){
+         else if(strcmp(tmpBuffer, "QUIT") != 0 ){
             std::cout << "Unknown command" << std::endl;
          }
       }
