@@ -147,7 +147,6 @@ int main(int argc , char *argv[]){
             pthread_t *newThread = new pthread_t();
             if(pthread_create(newThread, NULL, clientCommunication, (void *)&args) == 0){
                pthread_detach(*newThread);
-               
                std::cout <<"Server is thread numba: " << pthread_self() << std::endl;
             }
             //shutdown(new_socket, SHUT_RDWR);
@@ -186,7 +185,7 @@ void cleanBuffer (char* buffer){
 void *clientCommunication(void* data){
    char buffer[BUF];
    int size;
-   int failedLoginCount = 3;
+   signed int failedLoginCount = 3;
    bool verified = false;
    char username[9];
    arg_struct *args = (arg_struct *) data;
@@ -211,6 +210,7 @@ void *clientCommunication(void* data){
       /////////////////////////////////////////////////////////////////////////
       // RECEIVE
       cleanBuffer(buffer);
+      printf("Waiting for input\n");
       size = recv(current_socket, buffer, BUF - 1, 0);
       if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
          break;
@@ -286,6 +286,7 @@ void *clientCommunication(void* data){
             ldap_unbind_ext_s(ldapHandle, NULL, NULL);
             if(failedLoginCount == 0){
                blacklistEntry(clientIPstr);
+               //failedLoginCount = 3;
                printf("entry made to blacklist\n");
             }
             continue;
@@ -469,7 +470,7 @@ void *clientCommunication(void* data){
                         std::string type = directory + receiver;
                         printf("Next Composed directory: %s\n", type.c_str());
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
-                           && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
+                        && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
                               for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
                                  msgCount++;
                                  msgCounterString = std::to_string(msgCount);
@@ -570,7 +571,7 @@ void *clientCommunication(void* data){
                         type = directory + type;
                         printf("Next Composed directory: %s\n", type.c_str());
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
-                           && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
+                        && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
                               for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
                                  msgCount++;
                                  std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
@@ -675,7 +676,7 @@ void *clientCommunication(void* data){
                         type = directory + type;
                         printf("Next Composed directory: %s\n", type.c_str());
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
-                           && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
+                        && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
                               for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
                                  msgCount++;
                                  std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
@@ -767,16 +768,17 @@ void signalHandler(int sig){
 void blacklistEntry(char* ipAddr){
    std::time_t timestamp = std::time(nullptr);
    pthread_mutex_lock(&lock);
-   char* cpath = new char[path.length()+1];
+   char* cpath{new char[path.length()+1]};
    strcpy(cpath, path.c_str());
+   mkdir(cpath, 0777);
    pthread_mutex_unlock(&lock);
    cpath = strcat(cpath, ipAddr);
-   if(!std::filesystem::exists(cpath))
-      mkdir(cpath, 0777);
-   char* name = cpath;
+   mkdir(cpath, 0777);
+   std::string date = std::asctime(std::localtime(&timestamp));
+   char* name{new char[strlen(cpath) + 1 + date.length() + 1]};
+   name = strcpy(name,cpath);
    name = strcat(name, "/");
-   name = strcat(name, std::asctime(std::localtime(&timestamp)));
-   name = strcat(name, ".txt");
+   name = strcat(name, date.c_str());
    std::ofstream file(name);
    file.close();
 }
@@ -788,7 +790,6 @@ bool blacklisted(char* ipAddr){
    pthread_mutex_unlock(&lock);
    cpath = strcat(cpath, ipAddr);
    if(std::filesystem::exists(cpath)){
-      
       return true;
    }
    return false;
