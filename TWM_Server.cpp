@@ -20,8 +20,7 @@
 #include <vector>
 #include <pthread.h>
 #include <dirent.h>
-
-//#include "TWM_Session.h"
+#include <ctime>
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -33,11 +32,16 @@
 int abortRequested = 0;
 int create_socket = -1;
 int new_socket = -1;
+std::string path = "Blacklist/";
+pthread_mutex_t lock;
 
 ///////////////////////////////////////////////////////////////////////////////
 
 void signalHandler(int sig);
 void *clientCommunication(void *data);
+void blacklistEntry(char* ipAddr);
+bool blacklisted(char* ipAddr);
+void blacklistUpkeep();
 
 struct arg_struct{
    int socket;
@@ -278,11 +282,12 @@ void *clientCommunication(void* data){
          if (rc != LDAP_SUCCESS){
             fprintf(stderr, "LDAP bind error: %s\n", ldap_err2string(rc));
             failedLoginCount--;
-            if(failedLoginCount == 0){
-               //IMPLEMENT BLACKLIST
-            }
             send(current_socket, "ERR", 4, 0);
             ldap_unbind_ext_s(ldapHandle, NULL, NULL);
+            if(failedLoginCount == 0){
+               blacklistEntry(clientIPstr);
+               printf("entry made to blacklist\n");
+            }
             continue;
          }
          if (send(current_socket, "OK", 3, 0) == -1){
@@ -757,4 +762,38 @@ void signalHandler(int sig){
    }
    else
       exit(sig);
+}
+
+void blacklistEntry(char* ipAddr){
+   std::time_t timestamp = std::time(nullptr);
+   pthread_mutex_lock(&lock);
+   char* cpath = new char[path.length()+1];
+   strcpy(cpath, path.c_str());
+   pthread_mutex_unlock(&lock);
+   cpath = strcat(cpath, ipAddr);
+   if(!std::filesystem::exists(cpath))
+      mkdir(cpath, 0777);
+   char* name = cpath;
+   name = strcat(name, "/");
+   name = strcat(name, std::asctime(std::localtime(&timestamp)));
+   name = strcat(name, ".txt");
+   std::ofstream file(name);
+   file.close();
+}
+
+bool blacklisted(char* ipAddr){
+   pthread_mutex_lock(&lock);
+   char* cpath = new char[path.length()+1];
+   strcpy(cpath, path.c_str());
+   pthread_mutex_unlock(&lock);
+   cpath = strcat(cpath, ipAddr);
+   if(std::filesystem::exists(cpath)){
+      
+      return true;
+   }
+   return false;
+}
+
+void blacklistUpdate(){
+
 }
