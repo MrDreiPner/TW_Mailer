@@ -423,16 +423,16 @@ void *clientCommunication(void* data){
                   directory = strcat(directory, username);
                   directory = strcat(directory, "/");
                   printf("Composed directory: %s\n", directory);
-                  if(std::filesystem::exists(directory)){ //Looking for requested Directory
+                  if(std::filesystem::exists(directory)){ //Starting to look in user folders
                      struct dirent *dir;
                      DIR *openDIR = opendir(directory);
-                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){ //iterating through all receiver folders
                         std::string receiver = dir->d_name;
                         std::string type = directory + receiver;
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
-                        && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
+                        && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){  // excluding root
                            printf("Next Composed directory: %s\n", type.c_str());
-                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){     // reading all entries and enumerating
                               msgCount++;
                               msgCounterString = std::to_string(msgCount);
                               std::string entryString = entry.path();
@@ -478,21 +478,21 @@ void *clientCommunication(void* data){
                   directory = strcpy(directory, storageLocation);
                   directory = strcat(directory, "/");
                   printf("Composed directory: %s\n", directory);
-                  if(std::filesystem::exists(directory)){ //Looking for requested Directory
+                  if(std::filesystem::exists(directory)){ //Starting to look through storage folder
                      struct dirent *dir;
                      DIR *openDIR = opendir(directory);
-                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){ //iterating through all sender folders
                         std::string sender = dir->d_name;
                         std::string type = directory + sender;
                         printf("Next Composed directory: %s\n", type.c_str());
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
                         && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
-                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){ //iterating through receiver folders inside sender folders
                               std::string entryString = entry.path();
                               entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
                               if(strcmp(username,entryString.c_str()) == 0){
                                  std::string subPath = type + "/" + entryString + "/";
-                                 for(const auto & subEntry : std::filesystem::directory_iterator(subPath.c_str())){
+                                 for(const auto & subEntry : std::filesystem::directory_iterator(subPath.c_str())){ // reading all entries and enumerating
                                     msgCount++;
                                     msgCounterString = std::to_string(msgCount);
                                     std::string subEntryString = subEntry.path();
@@ -587,14 +587,13 @@ void *clientCommunication(void* data){
                      DIR *openDIR = opendir(directory);
                      std::string type;
                      std::string entryPath;
-                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){ //iterating through receiver folders
                         type = dir->d_name;
                         type = directory + type;
-                        
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
                         && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
                            printf("Next Composed directory: %s\n", type.c_str());
-                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){ // reading all entries and enumerating
                               msgCount++;
                               std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
                               if(msgCount == index){
@@ -651,19 +650,19 @@ void *clientCommunication(void* data){
                   buffer[size] = '\0';          
                   int index = atoi(buffer);
                   printf("Number received in READ command: %d\n", index); 
-                  if(std::filesystem::exists(directory)){ //Looking for requested Directory
+                  if(std::filesystem::exists(directory)){ //Starting to look through storage folder
                      bool fileFound = false;
                      struct dirent *dir;
                      DIR *openDIR = opendir(directory);
                      std::string type;
                      std::string entryPath;
-                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){//iterating through all sender folders
                         type = dir->d_name;
                         type = directory + type;
                         printf("Next Composed directory: %s\n", type.c_str());
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
                         && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
-                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){//iterating through receiver folders inside sender folders
                               std::string entryString = entry.path();
                               entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
                               if(strcmp(username,entryString.c_str()) == 0){
@@ -769,13 +768,13 @@ void *clientCommunication(void* data){
                      DIR *openDIR = opendir(directory);
                      std::string type;
                      std::string entryPath;
-                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){ //iterating through receiver folders
                         type = dir->d_name;
                         type = directory + type;
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
                         && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
                            printf("Next Composed directory: %s\n", type.c_str());
-                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){ // reading all entries and enumerating
                               msgCount++;
                               std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
                               if(msgCount == index){
@@ -815,20 +814,20 @@ void *clientCommunication(void* data){
                      break;
                   buffer[size] = '\0';          
                   int index = atoi(buffer);
-                  printf("Number received in READ command: %d\n", index); 
+                  printf("Number received in DEL command: %d\n", index); 
                   if(std::filesystem::exists(directory)){ //Looking for requested Directory
                      bool fileFound = false;
                      struct dirent *dir;
                      DIR *openDIR = opendir(directory);
                      std::string type;
                      std::string entryPath;
-                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){//iterating through all sender folders
                         type = dir->d_name;
                         type = directory + type;
                         printf("Next Composed directory: %s\n", type.c_str());
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
                         && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
-                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){//iterating through receiver folders inside sender folders
                               std::string entryString = entry.path();
                               entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
                               if(strcmp(username,entryString.c_str()) == 0){
@@ -976,7 +975,7 @@ void *blacklistUpkeep(void*){          //Checks Blacklist for entries that shoul
             if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
             && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
                printf("Found IP folder: %s\n", type.c_str());
-               for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+               for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){     //looking for blacklist files
                   std::string entryString = entry.path();
                   entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n'));
                   std::cout << "Found date " << entryString << "\n";
