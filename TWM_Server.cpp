@@ -471,7 +471,66 @@ void *clientCommunication(void* data){
                   delete[] directory;
                }
                else if(strcmp(buffer, "IN") == 0){
-                  //implement myFind to look for all messages that are adressed at username
+                  char* directory{ new char[strlen(storageLocation) + 1  + 1] };
+                  directory = strcpy(directory, storageLocation);
+                  directory = strcat(directory, "/");
+                  printf("Composed directory: %s\n", directory);
+                  if(std::filesystem::exists(directory)){ //Looking for requested Directory
+                     struct dirent *dir;
+                     DIR *openDIR = opendir(directory);
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                        std::string sender = dir->d_name;
+                        std::string type = directory + sender;
+                        printf("Next Composed directory: %s\n", type.c_str());
+                        if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
+                        && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                              std::string entryString = entry.path();
+                              entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
+                              if(strcmp(username,entryString.c_str()) == 0){
+                                 std::string subPath = type + "/" + entryString + "/";
+                                 for(const auto & subEntry : std::filesystem::directory_iterator(subPath.c_str())){
+                                    msgCount++;
+                                    msgCounterString = std::to_string(msgCount);
+                                    std::string subEntryString = subEntry.path();
+                                    subEntryString = subEntryString.substr(subEntryString.find_last_of("/")+1, subEntryString.find_last_of('\n')-4);
+                                    std::cout << "Sender: " << sender << " | Receiver: " << subEntryString + "\n";
+                                    allSubjects += msgCounterString + ": Sender: " + sender + " | Subject: " + subEntryString + "\n";
+                                 }
+                              }
+                           }
+                        }
+                     }
+                     if(msgCount > 0){ //Send List to Client
+                        msgCounterString = std::to_string(msgCount);
+                        allSubjects = "Message count: " + msgCounterString + "\n" + allSubjects;
+                        int size = allSubjects.size();
+                        char package[size+1];
+                        strcpy(package, allSubjects.c_str());
+                        printf("Messages: %s\n", package);
+                        if(send(current_socket, package, size, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                        cleanBuffer(package);
+                        waiting = false;
+                     }
+                     else{ //No List to be sent
+                        if(send(current_socket, "0", 2, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                        waiting = false;
+                     }
+                  }
+                  else{ //No List to be sent
+                     if(send(current_socket, "0", 2, 0) == -1){
+                        perror("send answer failed");
+                        return NULL;
+                     }
+                     waiting = false;
+                  }
+                  delete[] directory;
                }
                else{
                   if(send(current_socket, "ERR", 4, 0) == -1){
@@ -579,7 +638,82 @@ void *clientCommunication(void* data){
                   delete[] directory;
                }
                else if(strcmp(buffer, "IN") == 0){
-                  //implement myFind to look for all messages that are adressed at username
+                  char* directory{ new char[strlen(storageLocation) + 1 + 1] };
+                  directory = strcpy(directory, storageLocation);
+                  directory = strcat(directory, "/");
+                  printf("Composed directory: %s\n", directory);
+                  size = recv(current_socket, buffer, BUF - 1, 0);
+                  if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                     break;
+                  buffer[size] = '\0';          
+                  int index = atoi(buffer);
+                  printf("Number received in READ command: %d\n", index); 
+                  if(std::filesystem::exists(directory)){ //Looking for requested Directory
+                     bool fileFound = false;
+                     struct dirent *dir;
+                     DIR *openDIR = opendir(directory);
+                     std::string type;
+                     std::string entryPath;
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                        type = dir->d_name;
+                        type = directory + type;
+                        printf("Next Composed directory: %s\n", type.c_str());
+                        if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
+                        && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                              std::string entryString = entry.path();
+                              entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
+                              if(strcmp(username,entryString.c_str()) == 0){
+                                 std::string subPath = type + "/" + entryString + "/";
+                                 for(const auto & entry : std::filesystem::directory_iterator(subPath.c_str())){
+                                    msgCount++;
+                                    std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
+                                    if(msgCount == index){
+                                       entryPath = entry.path();
+                                       printf("File found! Filepath: %s\n",entryPath.c_str());
+                                       fileFound = true;
+                                    }
+                                    if(fileFound)
+                                       break;
+                                 }
+                              }
+                              if(fileFound)
+                                 break;
+                           }
+                        }
+                        if(fileFound)
+                           break;
+                     }
+                     if(msgCount < index || msgCount > index){
+                        std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
+                        if(send(current_socket, "ERR", 4, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                     }
+                     file.open(entryPath);
+                     if(file.is_open()){
+                        while(getline(file, line)){
+                           allText += line + "\n";
+                        }
+                        printf("Copying file content!\n");
+                        allText = "OK\n" + allText;
+                        int size = allText.size();
+                        char package[size+1];
+                        strcpy(package, allText.c_str()); //Send requested Message to Client
+                        if(send(current_socket, package, size, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                        else{
+                           printf("Requested message sent!\n");
+                        }
+                        cleanBuffer(package);
+                     }
+                     else
+                        std::cout << "Unable to open file\n";
+                  }
+                  delete[] directory;
                }
                else{
                   if(send(current_socket, "ERR", 4, 0) == -1){
@@ -625,7 +759,7 @@ void *clientCommunication(void* data){
                      break;
                   buffer[size] = '\0';          
                   int index = atoi(buffer);
-                  printf("Number received in READ command: %d\n", index); 
+                  printf("Number received in DEL command: %d\n", index); 
                   if(std::filesystem::exists(directory)){ //Looking for requested Directory
                      bool fileFound = false;
                      struct dirent *dir;
@@ -669,7 +803,66 @@ void *clientCommunication(void* data){
                   delete[] directory;
                }
                else if(strcmp(buffer, "IN") == 0){
-                  //implement myFind to look for all messages that are adressed at username
+                  char* directory{ new char[strlen(storageLocation) + 1 + 1] };
+                  directory = strcpy(directory, storageLocation);
+                  directory = strcat(directory, "/");
+                  printf("Composed directory: %s\n", directory);
+                  size = recv(current_socket, buffer, BUF - 1, 0);
+                  if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+                     break;
+                  buffer[size] = '\0';          
+                  int index = atoi(buffer);
+                  printf("Number received in READ command: %d\n", index); 
+                  if(std::filesystem::exists(directory)){ //Looking for requested Directory
+                     bool fileFound = false;
+                     struct dirent *dir;
+                     DIR *openDIR = opendir(directory);
+                     std::string type;
+                     std::string entryPath;
+                     for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+                        type = dir->d_name;
+                        type = directory + type;
+                        printf("Next Composed directory: %s\n", type.c_str());
+                        if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
+                        && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                              std::string entryString = entry.path();
+                              entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
+                              if(strcmp(username,entryString.c_str()) == 0){
+                                 std::string subPath = type + "/" + entryString + "/";
+                                 for(const auto & entry : std::filesystem::directory_iterator(subPath.c_str())){
+                                    msgCount++;
+                                    std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
+                                    if(msgCount == index){
+                                       entryPath = entry.path();
+                                       printf("File found! Filepath: %s\n",entryPath.c_str());
+                                       std::filesystem::remove(entryPath);
+                                       if(send(current_socket, "OK", 3, 0) == -1){
+                                          perror("send answer failed");
+                                          return NULL;
+                                       }
+                                       fileFound = true;
+                                    }
+                                    if(fileFound)
+                                       break;
+                                 }
+                              }
+                              if(fileFound)
+                                 break;
+                           }
+                        }
+                        if(fileFound)
+                           break;
+                                          }
+                     if(msgCount < index || msgCount > index){
+                        std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
+                        if(send(current_socket, "ERR", 4, 0) == -1){
+                           perror("send answer failed");
+                           return NULL;
+                        }
+                     }
+                  }
+                  delete[] directory;
                }
                else{
                   if(send(current_socket, "ERR", 4, 0) == -1){

@@ -204,7 +204,7 @@ int main(int argc, char* argv[]){
                //skip to receive block
             }
             else{
-               printf("OUT or IN >> ");
+               printf("<OUT>bound | <IN>bound >> ");
                fgets(buffer, BUF, stdin);
                size = strlen(buffer);
                buffer[size-1] = '\0';
@@ -218,7 +218,7 @@ int main(int argc, char* argv[]){
             }
             else{
                for(int i = 0; i < 2; i++){
-                  i == 0 ? printf("OUT or IN >> ") : printf("Number >> ");
+                  i == 0 ? printf("<OUT>bound | <IN>bound >> ") : printf("Number >> ");
                   fgets(buffer, BUF, stdin);
                   size = strlen(buffer);
                   buffer[size-1] = '\0';
