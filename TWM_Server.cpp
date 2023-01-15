@@ -32,7 +32,7 @@
 int abortRequested = 0;
 int create_socket = -1;
 int new_socket = -1;
-std::string path = "Blacklist/";
+const std::string path = "Blacklist/";
 pthread_mutex_t lock;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -41,7 +41,7 @@ void signalHandler(int sig);
 void *clientCommunication(void *data);
 void blacklistEntry(char* ipAddr);
 bool blacklisted(char* ipAddr);
-void blacklistUpkeep();
+void *blacklistUpkeep(void*);
 
 struct arg_struct{
    int socket;
@@ -58,6 +58,11 @@ int main(int argc , char *argv[]){
    if(argc < 3){
       perror("Too few arguments");
       return EXIT_FAILURE;
+   }
+   pthread_t *blWorkerThread = new pthread_t();
+   if(pthread_create(blWorkerThread, NULL, blacklistUpkeep, NULL) == 0){
+               pthread_detach(*blWorkerThread);
+               std::cout <<"Server is thread numba: " << pthread_self() << std::endl;
    }
    int PORT = std::strtol(argv[1], nullptr, 10);
    args.dataStore = new char[sizeof(argv[2])];
@@ -280,7 +285,7 @@ void *clientCommunication(void* data){
             NULL,
             &servercredp);
          if(blacklisted(clientIPstr)){
-            if(send(current_socket, "ERRBlacklist", 13, 0) == -1){
+            if(send(current_socket, "ERR - Blacklist", 16, 0) == -1){
                perror("send answer failed");
                return NULL;
             }
@@ -435,6 +440,9 @@ void *clientCommunication(void* data){
                      perror("send answer failed");
                      return NULL;
                   }
+                  delete[] path;
+                  delete[] subPath;
+                  delete[] filename;
                }
                cleanBuffer(buffer);
             } 
@@ -517,6 +525,7 @@ void *clientCommunication(void* data){
                      }
                      waiting = false;
                   }
+                  delete[] directory;
                }
                else if(strcmp(buffer, "IN") == 0){
                   //implement myFind to look for all messages that are adressed at username
@@ -623,6 +632,7 @@ void *clientCommunication(void* data){
                      else
                         std::cout << "Unable to open file\n";
                   }
+                  delete[] directory;
                }
                else if(strcmp(buffer, "IN") == 0){
                   //implement myFind to look for all messages that are adressed at username
@@ -712,6 +722,7 @@ void *clientCommunication(void* data){
                         }
                      }
                   }
+                  delete[] directory;
                }
                else if(strcmp(buffer, "IN") == 0){
                   //implement myFind to look for all messages that are adressed at username
@@ -787,8 +798,8 @@ void blacklistEntry(char* ipAddr){
    name = strcat(name, date.c_str());
    std::ofstream file(name);
    file.close();
-   free(cpath);
-   free(name);
+   delete[] cpath;
+   delete[] name;
    pthread_mutex_unlock(&lock);
 }
 
@@ -802,11 +813,21 @@ bool blacklisted(char* ipAddr){
       pthread_mutex_unlock(&lock);
       return true;
    }
-   free(cpath);
+   delete[] cpath;
    pthread_mutex_unlock(&lock);
    return false;
 }
 
 void blacklistUpdate(){
 
+}
+
+void *blacklistUpkeep(void*){
+   while(1){
+      sleep(2);
+      pthread_mutex_lock(&lock);
+
+      pthread_mutex_unlock(&lock);
+   }
+   return NULL;
 }
