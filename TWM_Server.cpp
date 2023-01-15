@@ -66,7 +66,7 @@ int main(int argc , char *argv[]){
    pthread_t *blWorkerThread = new pthread_t(); //Thread to make upkeep of blacklist
    if(pthread_create(blWorkerThread, NULL, blacklistUpkeep, NULL) == 0){
       pthread_detach(*blWorkerThread);
-      std::cout <<"Server is thread numba: " << pthread_self() << std::endl;
+      std::cout <<"Server is thread number: " << pthread_self() << std::endl;
    }
    int PORT = std::strtol(argv[1], nullptr, 10);
    args.dataStore = new char[sizeof(argv[2])];
@@ -156,7 +156,7 @@ int main(int argc , char *argv[]){
             pthread_t *newThread = new pthread_t();
             if(pthread_create(newThread, NULL, clientCommunication, (void *)&args) == 0){
                pthread_detach(*newThread);
-               std::cout <<"Server is thread numba: " << pthread_self() << std::endl;
+               std::cout <<"Server is thread number: " << pthread_self() << std::endl;
             }
             //shutdown(new_socket, SHUT_RDWR);
          }
@@ -203,9 +203,9 @@ void *clientCommunication(void* data){
    struct in_addr ipAddr = args->pV4Addr->sin_addr;
    char clientIPstr[INET_ADDRSTRLEN];
    inet_ntop( AF_INET, &ipAddr, clientIPstr, INET_ADDRSTRLEN );
-   std::cout <<"This is thread number: " << pthread_self() << std::endl;
-   std::cout <<"passed storage location = " << storageLocation << std::endl;
-   std::cout <<"passed clientIPadress = " << clientIPstr << std::endl;
+   // std::cout <<"This is thread number: " << pthread_self() << std::endl;
+   // std::cout <<"passed storage location = " << storageLocation << std::endl;
+   // std::cout <<"passed clientIPadress = " << clientIPstr << std::endl;
 
    ////////////////////////////////////////////////////////////////////////////
    // SEND welcome message
@@ -245,7 +245,7 @@ void *clientCommunication(void* data){
          buffer[size] = '\0';
          char ldapBindPassword[256];
          strcpy(ldapBindPassword, buffer);
-         printf("pw taken over from commandline\n");
+         // // ("pw taken over from commandline\n");
          LDAP *ldapHandle;
          int rc = ldap_initialize(&ldapHandle, ldapUri);    // setup LDAP connection
          if (rc != LDAP_SUCCESS){
@@ -337,7 +337,7 @@ void *clientCommunication(void* data){
                      if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
                         strcpy(message, buffer);
                      else if(!(buffer[0] == '.')){
-                        //printf("if . i should not be here --> content is %s", buffer);
+                        // printf("if . i should not be here --> content is %s", buffer);
                         strcat(message, buffer);
                      }
                      else
@@ -437,7 +437,7 @@ void *clientCommunication(void* data){
                               msgCounterString = std::to_string(msgCount);
                               std::string entryString = entry.path();
                               entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
-                              std::cout << msgCount << ": Receiver: " << receiver << " | Subject: " << entryString + "\n";
+                              // std::cout << msgCount << ": Receiver: " << receiver << " | Subject: " << entryString + "\n";
                               allSubjects += msgCounterString + ": Receiver: " + receiver + " | Subject: " + entryString + "\n";
                            }
                         }
@@ -497,7 +497,7 @@ void *clientCommunication(void* data){
                                     msgCounterString = std::to_string(msgCount);
                                     std::string subEntryString = subEntry.path();
                                     subEntryString = subEntryString.substr(subEntryString.find_last_of("/")+1, subEntryString.find_last_of('\n')-4);
-                                    std::cout << "Sender: " << sender << " | Receiver: " << subEntryString + "\n";
+                                    // std::cout << "Sender: " << sender << " | Receiver: " << subEntryString + "\n";
                                     allSubjects += msgCounterString + ": Sender: " + sender + " | Subject: " + subEntryString + "\n";
                                  }
                               }
@@ -595,7 +595,7 @@ void *clientCommunication(void* data){
                            printf("Next Composed directory: %s\n", type.c_str());
                            for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){ // reading all entries and enumerating
                               msgCount++;
-                              std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
+                              // std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
                               if(msgCount == index){
                                  entryPath = entry.path();
                                  printf("File found! Filepath: %s\n",entryPath.c_str());
@@ -609,7 +609,7 @@ void *clientCommunication(void* data){
                            break;
                      }
                      if(msgCount < index || msgCount > index){
-                        std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
+                        // std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
                         if(sendERR(current_socket)){
                            perror("send answer failed");
                            return NULL;
@@ -669,7 +669,7 @@ void *clientCommunication(void* data){
                                  std::string subPath = type + "/" + entryString + "/";
                                  for(const auto & entry : std::filesystem::directory_iterator(subPath.c_str())){
                                     msgCount++;
-                                    std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
+                                    // std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
                                     if(msgCount == index){
                                        entryPath = entry.path();
                                        printf("File found! Filepath: %s\n",entryPath.c_str());
@@ -687,7 +687,7 @@ void *clientCommunication(void* data){
                            break;
                      }
                      if(msgCount < index || msgCount > index){
-                        std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
+                        // std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
                         if(sendERR(current_socket)){
                            perror("send answer failed");
                            return NULL;
@@ -776,7 +776,7 @@ void *clientCommunication(void* data){
                            printf("Next Composed directory: %s\n", type.c_str());
                            for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){ // reading all entries and enumerating
                               msgCount++;
-                              std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
+                              // std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
                               if(msgCount == index){
                                  entryPath = entry.path();
                                  printf("File found! Filepath: %s\n",entryPath.c_str());
@@ -795,7 +795,7 @@ void *clientCommunication(void* data){
                            break;
                      }
                      if(msgCount < index || msgCount > index){
-                        std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
+                        // std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
                         if(sendERR(current_socket)){
                            perror("send answer failed");
                            return NULL;
@@ -834,7 +834,7 @@ void *clientCommunication(void* data){
                                  std::string subPath = type + "/" + entryString + "/";
                                  for(const auto & entry : std::filesystem::directory_iterator(subPath.c_str())){
                                     msgCount++;
-                                    std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
+                                    // std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
                                     if(msgCount == index){
                                        entryPath = entry.path();
                                        printf("File found! Filepath: %s\n",entryPath.c_str());
@@ -857,7 +857,7 @@ void *clientCommunication(void* data){
                            break;
                                           }
                      if(msgCount < index || msgCount > index){
-                        std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
+                        // std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
                         if(sendERR(current_socket)){
                            perror("send answer failed");
                            return NULL;
@@ -963,7 +963,6 @@ void *blacklistUpkeep(void*){          //Checks Blacklist for entries that shoul
       char* bl_path{new char[path.length()]};
       bl_path = strcpy(bl_path, path.c_str());
       if(std::filesystem::exists(bl_path)){ //Looking for requested Directory
-         //bool fileFound = false;
          struct dirent *dir;
          DIR *openDIR = opendir(bl_path);
          std::string type;
@@ -978,7 +977,7 @@ void *blacklistUpkeep(void*){          //Checks Blacklist for entries that shoul
                for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){     //looking for blacklist files
                   std::string entryString = entry.path();
                   entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n'));
-                  std::cout << "Found date " << entryString << "\n";
+                  // std::cout << "Found date " << entryString << "\n";
                   std::stringstream timeString(entryString);
                   std::time_t timestamp;
                   struct std::tm tm;
@@ -986,7 +985,7 @@ void *blacklistUpkeep(void*){          //Checks Blacklist for entries that shoul
                   timestamp = mktime(&tm);
                   std::time_t now = std::time(nullptr);
                   std::localtime(&now);
-                  std::cout << "Calculated difference time_t: " << difftime(now, timestamp) << "\n";
+                  // std::cout << "Calculated difference time_t: " << difftime(now, timestamp) << "\n";
                   if(difftime(now, timestamp) >= BL_TIMEOUT){
                      std::cout << "IP - " << ip << " - has been removed from Blacklist\n";
                      std::filesystem::remove_all(type.c_str());
