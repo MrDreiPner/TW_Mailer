@@ -21,6 +21,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <ctime>
+#include <iomanip>
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -826,8 +827,43 @@ void *blacklistUpkeep(void*){
    while(1){
       sleep(2);
       pthread_mutex_lock(&lock);
-
+      char* bl_path{new char[path.length()]};
+      bl_path = strcpy(bl_path, path.c_str());
+      if(std::filesystem::exists(bl_path)){ //Looking for requested Directory
+         //bool fileFound = false;
+         struct dirent *dir;
+         DIR *openDIR = opendir(bl_path);
+         std::string type;
+         std::string entryPath;
+         for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
+            type = dir->d_name;
+            std::string ip = type;
+            type = bl_path + type;
+            if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
+            && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
+               printf("Found IP folder: %s\n", type.c_str());
+               for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                  std::string entryString = entry.path();
+                  entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
+                  std::cout << "Found date " << entryString << "\n";
+                  std::stringstream timeString(entryString);
+                  std::time_t timestamp;
+                  struct std::tm tm;
+                  timeString >> std::get_time(&tm, "%a %b %d %H:%M:%S %Y");
+                  timestamp = mktime(&tm);
+                  std::time_t now = std::time(nullptr);
+                  std::localtime(&now);
+                  std::cout << "Calculated difference time_t: " << difftime(now, timestamp) << "\n";
+                  if(difftime(now, timestamp) > 10){
+                     std::cout << "IP - " << ip << " - has been removed from Blacklist\n";
+                     std::filesystem::remove_all(type.c_str());
+                  }
+               }
+            }
+         }
+      }
       pthread_mutex_unlock(&lock);
+      delete[] bl_path;
    }
    return NULL;
 }
