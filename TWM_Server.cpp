@@ -1,27 +1,27 @@
-#include <sys/types.h>
+// #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
-#include <stdlib.h>
+// #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <signal.h>
-#include <bits/stdc++.h>
+// #include <bits/stdc++.h>
 #include <iostream>
 #include <sys/stat.h>
-#include <sys/types.h>
-#include <sstream>
+// #include <sys/types.h>
+// #include <sstream>
 #include <fstream>
-//#include <charconv>
-//#include <array>
-//#include <filesystem>
+// #include <charconv>
+// #include <array>
+#include <filesystem>
 #include <ldap.h>
-//#include <vector>
-//#include <pthread.h>
+// #include <vector>
+// #include <pthread.h>
 #include <dirent.h>
-//#include <ctime>
-//#include <iomanip>
+// #include <ctime>
+// #include <iomanip>
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -60,10 +60,10 @@ int main(int argc , char *argv[]){
       perror("Too few arguments");
       return EXIT_FAILURE;
    }
-   pthread_t *blWorkerThread = new pthread_t();
+   pthread_t *blWorkerThread = new pthread_t(); //Thread to make upkeep of blacklist
    if(pthread_create(blWorkerThread, NULL, blacklistUpkeep, NULL) == 0){
-               pthread_detach(*blWorkerThread);
-               std::cout <<"Server is thread numba: " << pthread_self() << std::endl;
+      pthread_detach(*blWorkerThread);
+      std::cout <<"Server is thread numba: " << pthread_self() << std::endl;
    }
    int PORT = std::strtol(argv[1], nullptr, 10);
    args.dataStore = new char[sizeof(argv[2])];
@@ -146,7 +146,7 @@ int main(int argc , char *argv[]){
                break;
             }
          }
-         else{
+         else{ //Create Thread for each new Client connection
             printf("Client connected from %s:%d...\n", inet_ntoa(cliaddress.sin_addr), ntohs(cliaddress.sin_port));
             args.pV4Addr = (struct sockaddr_in*)&cliaddress;
             args.socket = new_socket;
@@ -212,7 +212,7 @@ void *clientCommunication(void* data){
       return NULL;
    }
    cleanBuffer(buffer);
-   do{
+   do{ //Handle Client Commands
       /////////////////////////////////////////////////////////////////////////
       // RECEIVE
       cleanBuffer(buffer);
@@ -223,31 +223,28 @@ void *clientCommunication(void* data){
       buffer[size] = '\0';
       printf("Message received: %s\n", buffer);
       //LOGIN 
-      if(strcmp(buffer, "LOGIN") == 0){
+      if(strcmp(buffer, "LOGIN") == 0){      //LOGIN Command Handling
          const char *ldapUri = "ldap://ldap.technikum-wien.at:389";
          const int ldapVersion = LDAP_VERSION3;
-         //receive username
          cleanBuffer(buffer);
-         size = recv(current_socket, buffer, BUF - 1, 0);
-         if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
+         size = recv(current_socket, buffer, BUF - 1, 0);   //receive username
+         if(receiveMsgErrHandling(size))  //returns true if an error has occured and ends the loop
             break;
          buffer[size] = '\0';
          char ldapBindUser[256];
          strcpy(username, buffer);
          sprintf(ldapBindUser, "uid=%s,ou=people,dc=technikum-wien,dc=at", username);
          printf("user set to: %s\n", ldapBindUser);
-         //receive password
          cleanBuffer(buffer);
-         size = recv(current_socket, buffer, BUF - 1, 0);
+         size = recv(current_socket, buffer, BUF - 1, 0);   //receive password
          if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
             break;
          buffer[size] = '\0';
          char ldapBindPassword[256];
          strcpy(ldapBindPassword, buffer);
          printf("pw taken over from commandline\n");
-         // setup LDAP connection
          LDAP *ldapHandle;
-         int rc = ldap_initialize(&ldapHandle, ldapUri);
+         int rc = ldap_initialize(&ldapHandle, ldapUri);    // setup LDAP connection
          if (rc != LDAP_SUCCESS){
             fprintf(stderr, "ldap_init failed\n");
             continue;
@@ -262,8 +259,7 @@ void *clientCommunication(void* data){
             ldap_unbind_ext_s(ldapHandle, NULL, NULL);
             continue;
          }
-         //start secure connection
-         rc = ldap_start_tls_s(
+         rc = ldap_start_tls_s(        //start secure connection
          ldapHandle,
          NULL,
          NULL);
@@ -272,11 +268,10 @@ void *clientCommunication(void* data){
             ldap_unbind_ext_s(ldapHandle, NULL, NULL);
             continue;
          }
-         //bind credentials
-         BerValue bindCredentials;
+         BerValue bindCredentials;     //bind credentials
          bindCredentials.bv_val = (char *)ldapBindPassword;
          bindCredentials.bv_len = strlen(ldapBindPassword);
-         BerValue *servercredp; // server's credentials
+         BerValue *servercredp;        //server's credentials
          rc = ldap_sasl_bind_s(
             ldapHandle,
             ldapBindUser,
@@ -285,14 +280,14 @@ void *clientCommunication(void* data){
             NULL,
             NULL,
             &servercredp);
-         if(blacklisted(clientIPstr)){
+         if(blacklisted(clientIPstr)){    //if IP is blacklisted, block user from Login
             if(send(current_socket, "ERR - Blacklist", 16, 0) == -1){
                perror("send answer failed");
                return NULL;
             }
             continue;
          }
-         else if (rc != LDAP_SUCCESS){
+         else if (rc != LDAP_SUCCESS){    //Send ERR if Wrong Credentials
             fprintf(stderr, "LDAP bind error: %s\n", ldap_err2string(rc));
             failedLoginCount--;
             send(current_socket, "ERR", 4, 0);
@@ -304,7 +299,7 @@ void *clientCommunication(void* data){
             }
             continue;
          }
-         if (send(current_socket, "OK", 3, 0) == -1){
+         if (send(current_socket, "OK", 3, 0) == -1){ //Send OK if Login successful
             perror("send answer failed");
             return NULL;
          }
@@ -344,59 +339,6 @@ void *clientCommunication(void* data){
                      }
                      else
                         state++;
-                     ////////// LONG MESSAGE NON FUNCTIONAL
-                     /*bool longTransmission = false;
-                     if(strcmp(buffer,"LONG_TRANSMISSION") == 0){
-                        printf("Start LONG_TRANSMISSION\n");
-                        longTransmission = true;
-                        while(longTransmission){
-                           size = recv(*current_socket, buffer, BUF - 1, 0);
-                           if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-                              break;
-                           buffer[size] = '\0';
-                           if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
-                              strcpy(message, buffer);
-                           else if(!(buffer[0] == '.')){
-                              strcat(message, buffer);
-                           }
-                           else{
-                              state++;
-                           }
-
-                           size = recv(*current_socket, buffer, BUF - 1, 0);
-                           if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-                              break;
-                           buffer[size] = '\0';
-                           std::cout << buffer << std::endl;
-                           if(strcmp(buffer,"END_TRANSMISSION") == 0){
-                              longTransmission = false;
-                           }
-                        }
-                     }
-                     else{   
-                        printf("Start SHORT_TRANSMISSION\n");  
-                        size = recv(*current_socket, buffer, BUF - 1, 0);
-                        if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-                           break;
-                        buffer[size] = '\0';
-                        printf("Message received in SHORT_SEND: %s\n", buffer);
-                        if(strcmp(message,"\0") == 0 && !(buffer[0] == '.'))
-                           strcpy(message, buffer);
-                        else if(!(buffer[0] == '.')){
-                           strcat(message, buffer);
-                        }
-                        else if(buffer[0] == '.'){
-                           state++;
-                        }
-                        printf("Current message: %s\n", message);
-                        cleanBuffer(buffer);
-                        size = recv(*current_socket, buffer, BUF, 0);
-                        if(receiveMsgErrHandling(size))//returns true if an error has occured and ends the loop
-                           break;
-                        buffer[size] = '\0';
-                        printf("END_TRANSMISSION = %s\n", buffer); ///////////// LAST END TRANSMISSION DID NOT GET SENT OR RECEIVED
-                        cleanBuffer(buffer);
-                     }*/
                      break;
                } //Putting Received data into .txt file
                printf("Message received in SEND command: %s\n", buffer);
@@ -404,18 +346,18 @@ void *clientCommunication(void* data){
                   printf("SEND message completed\n");
                   std::ofstream file;
                   mkdir(storageLocation,0777);
-                  char* path{ new char[strlen(storageLocation) + 1 + strlen(sender)] };
+                  char* path{ new char[strlen(storageLocation) + 1 + strlen(sender)] };   //compose Path for Sender Folder
                   path = strcpy(path, storageLocation);
                   path = strcat(path, "/");
                   path = strcat(path, sender);
                   mkdir(path,0777);
-                  char* subPath{ new char[strlen(path) + 1 + strlen(receiver)] };
+                  char* subPath{ new char[strlen(path) + 1 + strlen(receiver)] };         //compose Path for receiver Folder
                   subPath = strcpy(subPath, path);
                   subPath = strcat(subPath, "/");
                   subPath = strcat(subPath, receiver);
                   mkdir(subPath,0777);
                   const char* txt =".txt\0";
-                  char* filename{ new char[strlen(subPath) + 1 + strlen(subject) + strlen(txt) + 1] };
+                  char* filename{ new char[strlen(subPath) + 1 + strlen(subject) + strlen(txt) + 1] };   //compose Path for Message File
                   filename = strcpy(filename, subPath);
                   filename = strcat(filename, "/");
                   filename = strcat(filename, subject);
@@ -423,7 +365,7 @@ void *clientCommunication(void* data){
                   printf("Composed filename: %s\n", filename); 
                   struct stat buffer;
                   int numerator = 0;
-                  while(stat (filename, &buffer) == 0){
+                  while(stat(filename, &buffer) == 0){      //composes Path for Message if Message with same Subject already exists
                      numerator++;
                      std::string numStr = std::to_string(numerator);
                      filename = strcpy(filename, subPath);
@@ -433,7 +375,7 @@ void *clientCommunication(void* data){
                      filename = strcat(filename, txt);
                      printf("Alternate Composed filename: %s\n", filename);
                   }
-                  file.open(filename, std::ios_base::app);
+                  file.open(filename, std::ios_base::app);     //fill file with message
                   file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: \n" << message << std::endl;
                   file.close();
                   messageIncomplete = false;
@@ -455,8 +397,8 @@ void *clientCommunication(void* data){
             }
          }
 
-      } //LIST Command Handling
-      if(strcmp(buffer, "LIST") == 0){
+      }
+      if(strcmp(buffer, "LIST") == 0){       //LIST Command Handling
          if(verified){
             cleanBuffer(buffer);
             std::ifstream file;
@@ -547,8 +489,8 @@ void *clientCommunication(void* data){
                return NULL;
             }
          }
-      } //READ Command Handling
-      if(strcmp(buffer, "READ") == 0){
+      }
+      if(strcmp(buffer, "READ") == 0){       //READ Command Handling
          if(verified){
             cleanBuffer(buffer);
             std::ifstream file;
@@ -654,8 +596,8 @@ void *clientCommunication(void* data){
                return NULL;
             }
          } 
-      } //DEL Command Handling
-      if(strcmp(buffer, "DEL") == 0){
+      }
+      if(strcmp(buffer, "DEL") == 0){        //DEL Command Handling
          if(verified){
             cleanBuffer(buffer);
             std::ifstream file;
@@ -745,7 +687,6 @@ void *clientCommunication(void* data){
             }
          } 
       }
-    //ignore error
    } while (strcmp(buffer, "QUIT") != 0 && !abortRequested);
    cleanBuffer(buffer);
    // closes/frees the descriptor if not already
@@ -785,7 +726,7 @@ void signalHandler(int sig){
       exit(sig);
 }
 
-void blacklistEntry(char* ipAddr){
+void blacklistEntry(char* ipAddr){     //makes entry in Blacklist after 3 failed LOGIN attempts
    std::time_t timestamp = std::time(nullptr);
    pthread_mutex_lock(&lock);
    char* cpath{new char[path.length()+1]};
@@ -805,7 +746,7 @@ void blacklistEntry(char* ipAddr){
    pthread_mutex_unlock(&lock);
 }
 
-bool blacklisted(char* ipAddr){
+bool blacklisted(char* ipAddr){        //checks if IP is currently blacklisted
    pthread_mutex_lock(&lock);
    char* cpath {new char[path.length()+ strlen(ipAddr) + 1]};
    strcpy(cpath, path.c_str());
@@ -820,11 +761,7 @@ bool blacklisted(char* ipAddr){
    return false;
 }
 
-void blacklistUpdate(){
-
-}
-
-void *blacklistUpkeep(void*){
+void *blacklistUpkeep(void*){          //Checks Blacklist for entries that should be deleted
    while(1){
       sleep(2);
       pthread_mutex_lock(&lock);
