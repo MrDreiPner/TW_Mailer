@@ -27,6 +27,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #define BUF 1024
+#define BL_TIMEOUT 60
 
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -43,6 +44,8 @@ void *clientCommunication(void *data);
 void blacklistEntry(char* ipAddr);
 bool blacklisted(char* ipAddr);
 void *blacklistUpkeep(void*);
+int sendERR(int current_socket);
+int sendOK(int current_socket);
 
 struct arg_struct{
    int socket;
@@ -299,7 +302,7 @@ void *clientCommunication(void* data){
             }
             continue;
          }
-         if (send(current_socket, "OK", 3, 0) == -1){ //Send OK if Login successful
+         if (sendOK(current_socket)){ //Send OK if Login successful
             perror("send answer failed");
             return NULL;
          }
@@ -379,7 +382,7 @@ void *clientCommunication(void* data){
                   file << "Sender: " << sender << "\nReceiver: " << receiver << "\nSubject: " << subject << "\nMessage: \n" << message << std::endl;
                   file.close();
                   messageIncomplete = false;
-                  if (send(current_socket, "OK", 3, 0) == -1){
+                  if (sendOK(current_socket)){
                      perror("send answer failed");
                      return NULL;
                   }
@@ -533,7 +536,7 @@ void *clientCommunication(void* data){
                   delete[] directory;
                }
                else{
-                  if(send(current_socket, "ERR", 4, 0) == -1){
+                  if(sendERR(current_socket)){
                      perror("send answer failed");
                      return NULL;
                   }
@@ -608,7 +611,7 @@ void *clientCommunication(void* data){
                      }
                      if(msgCount < index || msgCount > index){
                         std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
-                        if(send(current_socket, "ERR", 4, 0) == -1){
+                        if(sendERR(current_socket)){
                            perror("send answer failed");
                            return NULL;
                         }
@@ -686,7 +689,7 @@ void *clientCommunication(void* data){
                      }
                      if(msgCount < index || msgCount > index){
                         std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
-                        if(send(current_socket, "ERR", 4, 0) == -1){
+                        if(sendERR(current_socket)){
                            perror("send answer failed");
                            return NULL;
                         }
@@ -716,7 +719,7 @@ void *clientCommunication(void* data){
                   delete[] directory;
                }
                else{
-                  if(send(current_socket, "ERR", 4, 0) == -1){
+                  if(sendERR(current_socket)){
                      perror("send answer failed");
                      return NULL;
                   }
@@ -779,7 +782,7 @@ void *clientCommunication(void* data){
                                  entryPath = entry.path();
                                  printf("File found! Filepath: %s\n",entryPath.c_str());
                                  std::filesystem::remove(entryPath);
-                                 if(send(current_socket, "OK", 3, 0) == -1){
+                                 if(sendOK(current_socket)){
                                     perror("send answer failed");
                                     return NULL;
                                  }
@@ -794,7 +797,7 @@ void *clientCommunication(void* data){
                      }
                      if(msgCount < index || msgCount > index){
                         std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
-                        if(send(current_socket, "ERR", 4, 0) == -1){
+                        if(sendERR(current_socket)){
                            perror("send answer failed");
                            return NULL;
                         }
@@ -837,7 +840,7 @@ void *clientCommunication(void* data){
                                        entryPath = entry.path();
                                        printf("File found! Filepath: %s\n",entryPath.c_str());
                                        std::filesystem::remove(entryPath);
-                                       if(send(current_socket, "OK", 3, 0) == -1){
+                                       if(sendOK(current_socket)){
                                           perror("send answer failed");
                                           return NULL;
                                        }
@@ -856,7 +859,7 @@ void *clientCommunication(void* data){
                                           }
                      if(msgCount < index || msgCount > index){
                         std::cout << "Check Index: " << index << " | Check Message count: " << msgCount << std::endl;
-                        if(send(current_socket, "ERR", 4, 0) == -1){
+                        if(sendERR(current_socket)){
                            perror("send answer failed");
                            return NULL;
                         }
@@ -865,7 +868,7 @@ void *clientCommunication(void* data){
                   delete[] directory;
                }
                else{
-                  if(send(current_socket, "ERR", 4, 0) == -1){
+                  if(sendERR(current_socket)){
                      perror("send answer failed");
                      return NULL;
                   }
@@ -985,7 +988,7 @@ void *blacklistUpkeep(void*){          //Checks Blacklist for entries that shoul
                   std::time_t now = std::time(nullptr);
                   std::localtime(&now);
                   std::cout << "Calculated difference time_t: " << difftime(now, timestamp) << "\n";
-                  if(difftime(now, timestamp) >= 10){
+                  if(difftime(now, timestamp) >= BL_TIMEOUT){
                      std::cout << "IP - " << ip << " - has been removed from Blacklist\n";
                      std::filesystem::remove_all(type.c_str());
                   }
@@ -997,4 +1000,20 @@ void *blacklistUpkeep(void*){          //Checks Blacklist for entries that shoul
       delete[] bl_path;
    }
    return NULL;
+}
+
+int sendERR(int current_socket){
+   if (send(current_socket, "ERR", 4, 0) == -1){ //Send ERR if Login successful
+      perror("send answer failed");
+      return 1;
+   }
+   return 0;
+}
+
+int sendOK(int current_socket){
+   if (send(current_socket, "OK", 3, 0) == -1){ //Send OK if Login successful
+      perror("send answer failed");
+      return 1;
+   }
+   return 0;
 }
