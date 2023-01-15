@@ -279,14 +279,21 @@ void *clientCommunication(void* data){
             NULL,
             NULL,
             &servercredp);
-         if (rc != LDAP_SUCCESS){
+         if(blacklisted(clientIPstr)){
+            if(send(current_socket, "ERRBlacklist", 13, 0) == -1){
+               perror("send answer failed");
+               return NULL;
+            }
+            continue;
+         }
+         else if (rc != LDAP_SUCCESS){
             fprintf(stderr, "LDAP bind error: %s\n", ldap_err2string(rc));
             failedLoginCount--;
             send(current_socket, "ERR", 4, 0);
             ldap_unbind_ext_s(ldapHandle, NULL, NULL);
             if(failedLoginCount == 0){
                blacklistEntry(clientIPstr);
-               //failedLoginCount = 3;
+               failedLoginCount = 3;
                printf("entry made to blacklist\n");
             }
             continue;
@@ -771,7 +778,6 @@ void blacklistEntry(char* ipAddr){
    char* cpath{new char[path.length()+1]};
    strcpy(cpath, path.c_str());
    mkdir(cpath, 0777);
-   pthread_mutex_unlock(&lock);
    cpath = strcat(cpath, ipAddr);
    mkdir(cpath, 0777);
    std::string date = std::asctime(std::localtime(&timestamp));
@@ -781,17 +787,23 @@ void blacklistEntry(char* ipAddr){
    name = strcat(name, date.c_str());
    std::ofstream file(name);
    file.close();
+   free(cpath);
+   free(name);
+   pthread_mutex_unlock(&lock);
 }
 
 bool blacklisted(char* ipAddr){
    pthread_mutex_lock(&lock);
-   char* cpath = new char[path.length()+1];
+   char* cpath {new char[path.length()+ strlen(ipAddr) + 1]};
    strcpy(cpath, path.c_str());
-   pthread_mutex_unlock(&lock);
    cpath = strcat(cpath, ipAddr);
    if(std::filesystem::exists(cpath)){
+      free(cpath);
+      pthread_mutex_unlock(&lock);
       return true;
    }
+   free(cpath);
+   pthread_mutex_unlock(&lock);
    return false;
 }
 
