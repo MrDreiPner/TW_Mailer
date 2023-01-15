@@ -13,15 +13,15 @@
 #include <sys/types.h>
 #include <sstream>
 #include <fstream>
-#include <charconv>
-#include <array>
-#include <filesystem>
+//#include <charconv>
+//#include <array>
+//#include <filesystem>
 #include <ldap.h>
-#include <vector>
-#include <pthread.h>
+//#include <vector>
+//#include <pthread.h>
 #include <dirent.h>
-#include <ctime>
-#include <iomanip>
+//#include <ctime>
+//#include <iomanip>
 
 
 ///////////////////////////////////////////////////////////////////////////////
