@@ -844,7 +844,7 @@ void *blacklistUpkeep(void*){
                printf("Found IP folder: %s\n", type.c_str());
                for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
                   std::string entryString = entry.path();
-                  entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
+                  entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n'));
                   std::cout << "Found date " << entryString << "\n";
                   std::stringstream timeString(entryString);
                   std::time_t timestamp;
@@ -854,7 +854,7 @@ void *blacklistUpkeep(void*){
                   std::time_t now = std::time(nullptr);
                   std::localtime(&now);
                   std::cout << "Calculated difference time_t: " << difftime(now, timestamp) << "\n";
-                  if(difftime(now, timestamp) > 10){
+                  if(difftime(now, timestamp) >= 10){
                      std::cout << "IP - " << ip << " - has been removed from Blacklist\n";
                      std::filesystem::remove_all(type.c_str());
                   }
