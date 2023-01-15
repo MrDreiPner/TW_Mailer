@@ -163,10 +163,7 @@ int main(int argc, char* argv[]){
          } //SEND command
          else if(strcmp(buffer, "SEND") == 0){
             send(create_socket, buffer, size, 0);
-            if(loggedIn == false){
-               //skip to receive block
-            }
-            else{
+            if(loggedIn){
                int enterPress = 1;
                while(buffer[0] != '.'){
                   switch(enterPress){
@@ -200,10 +197,7 @@ int main(int argc, char* argv[]){
          }
          else if(strcmp(buffer, "LIST") == 0){
             send(create_socket, buffer, size, 0);
-            if(loggedIn == false){
-               //skip to receive block
-            }
-            else{
+            if(loggedIn){
                printf("OUT or IN >> ");
                fgets(buffer, BUF, stdin);
                size = strlen(buffer);
@@ -213,10 +207,7 @@ int main(int argc, char* argv[]){
          }
          else if(strcmp(buffer, "READ") == 0 || strcmp(buffer, "DEL") == 0){
             send(create_socket, buffer, size, 0);
-            if(loggedIn == false){
-               //skip to receive block
-            }
-            else{
+            if(loggedIn){
                for(int i = 0; i < 2; i++){
                   i == 0 ? printf("OUT or IN >> ") : printf("Number >> ");
                   fgets(buffer, BUF, stdin);
