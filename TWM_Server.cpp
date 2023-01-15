@@ -484,17 +484,17 @@ void *clientCommunication(void* data){
                      for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
                         std::string receiver = dir->d_name;
                         std::string type = directory + receiver;
-                        printf("Next Composed directory: %s\n", type.c_str());
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
                         && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
-                              for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
-                                 msgCount++;
-                                 msgCounterString = std::to_string(msgCount);
-                                 std::string entryString = entry.path();
-                                 entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
-                                 std::cout << msgCount << ": Receiver: " << receiver << " | Subject: " << entryString + "\n";
-                                 allSubjects += msgCounterString + ": Receiver: " + receiver + " | Subject: " + entryString + "\n";
-                              }
+                           printf("Next Composed directory: %s\n", type.c_str());
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                              msgCount++;
+                              msgCounterString = std::to_string(msgCount);
+                              std::string entryString = entry.path();
+                              entryString = entryString.substr(entryString.find_last_of("/")+1, entryString.find_last_of('\n')-4);
+                              std::cout << msgCount << ": Receiver: " << receiver << " | Subject: " << entryString + "\n";
+                              allSubjects += msgCounterString + ": Receiver: " + receiver + " | Subject: " + entryString + "\n";
+                           }
                         }
                      }
                      if(msgCount > 0){ //Send List to Client
@@ -586,20 +586,21 @@ void *clientCommunication(void* data){
                      for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
                         type = dir->d_name;
                         type = directory + type;
-                        printf("Next Composed directory: %s\n", type.c_str());
+                        
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
                         && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
-                              for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
-                                 msgCount++;
-                                 std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
-                                 if(msgCount == index){
-                                    entryPath = entry.path();
-                                    printf("File found! Filepath: %s\n",entryPath.c_str());
-                                    fileFound = true;
-                                 }
-                                 if(fileFound)
-                                    break;
+                           printf("Next Composed directory: %s\n", type.c_str());
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                              msgCount++;
+                              std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
+                              if(msgCount == index){
+                                 entryPath = entry.path();
+                                 printf("File found! Filepath: %s\n",entryPath.c_str());
+                                 fileFound = true;
                               }
+                              if(fileFound)
+                                 break;
+                           }
                         }
                         if(fileFound)
                            break;
@@ -692,25 +693,25 @@ void *clientCommunication(void* data){
                      for(dir = readdir(openDIR); dir != NULL; dir = readdir(openDIR)){
                         type = dir->d_name;
                         type = directory + type;
-                        printf("Next Composed directory: %s\n", type.c_str());
                         if((type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != ".") 
                         && (type.substr(type.find_last_of("/")+1, type.find_last_of('\0')-1) != "..")){
-                              for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
-                                 msgCount++;
-                                 std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
-                                 if(msgCount == index){
-                                    entryPath = entry.path();
-                                    printf("File found! Filepath: %s\n",entryPath.c_str());
-                                    std::filesystem::remove(entryPath);
-                                    if(send(current_socket, "OK", 3, 0) == -1){
-                                       perror("send answer failed");
-                                       return NULL;
-                                    }
-                                    fileFound = true;
+                           printf("Next Composed directory: %s\n", type.c_str());
+                           for(const auto & entry : std::filesystem::directory_iterator(type.c_str())){
+                              msgCount++;
+                              std::cout << "Index: " << index << " | Message count: " << msgCount << std::endl;
+                              if(msgCount == index){
+                                 entryPath = entry.path();
+                                 printf("File found! Filepath: %s\n",entryPath.c_str());
+                                 std::filesystem::remove(entryPath);
+                                 if(send(current_socket, "OK", 3, 0) == -1){
+                                    perror("send answer failed");
+                                    return NULL;
                                  }
-                                 if(fileFound)
-                                    break;
+                                 fileFound = true;
                               }
+                              if(fileFound)
+                                 break;
+                           }
                         }
                         if(fileFound)
                            break;
